@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WorkoutList } from '../../../types/workout';
-import { getWorkouts } from '../../../services/workout.service';
+import { getWorkouts, deleteWorkout } from '../../../services/workout.service';
 import { format, subDays, startOfWeek } from 'date-fns';
 
 interface WorkoutHistoryProps {
@@ -17,6 +17,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   const [workouts, setWorkouts] = useState<WorkoutList[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadWorkouts();
@@ -79,6 +80,17 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
     return `${hours}h ${minutes}m`;
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteWorkout(id);
+      setWorkouts(workouts.filter((w) => w.id !== id));
+      setDeletingId(null);
+    } catch (error) {
+      console.error('Failed to delete workout:', error);
+      alert('Failed to delete workout');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -121,36 +133,63 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
       ) : (
         <div className="space-y-3">
           {workouts.map((workout) => (
-            <div
-              key={workout.id}
-              className="card cursor-pointer hover:bg-gray-750 transition-colors"
-              onClick={() => onSelectWorkout?.(workout.id)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">
-                    {workout.template_name_snapshot || 'Freestyle Workout'}
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    {format(new Date(workout.workout_date), 'EEEE, MMM d, yyyy')}
+            <div key={workout.id} className="card">
+              {deletingId === workout.id ? (
+                <div className="space-y-3">
+                  <p className="text-sm">
+                    Delete &quot;{workout.template_name_snapshot || 'Freestyle Workout'}&quot;?
                   </p>
-                  {workout.completed_at && (
-                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                      <span>
-                        ⏱️ {formatDuration(workout.started_at, workout.completed_at)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-400">
-                    {new Date(workout.started_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDelete(workout.id)}
+                      className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setDeletingId(null)}
+                      className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onClick={() => onSelectWorkout?.(workout.id)}
+                  >
+                    <h3 className="font-semibold text-lg">
+                      {workout.template_name_snapshot || 'Freestyle Workout'}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {format(new Date(workout.workout_date), 'EEEE, MMM d, yyyy')}
+                    </p>
+                    {workout.completed_at && (
+                      <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+                        <span>
+                          ⏱️ {formatDuration(workout.started_at, workout.completed_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-gray-400">
+                      {new Date(workout.started_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setDeletingId(workout.id)}
+                      className="px-3 py-1 text-red-400 hover:text-red-300"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

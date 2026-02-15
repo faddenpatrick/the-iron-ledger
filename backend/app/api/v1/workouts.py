@@ -340,6 +340,30 @@ def complete_workout(
     return workout
 
 
+@router.delete("/{workout_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workout(
+    workout_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Soft delete a workout."""
+    workout = db.query(Workout).filter(
+        Workout.id == workout_id,
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None)
+    ).first()
+
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workout not found"
+        )
+
+    workout.deleted_at = datetime.utcnow()
+    db.commit()
+    return None
+
+
 @router.post("/{workout_id}/save-as-template", response_model=WorkoutTemplateResponse)
 def save_workout_as_template(
     workout_id: UUID,

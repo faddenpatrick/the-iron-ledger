@@ -248,6 +248,15 @@ export const completeWorkout = async (
   return response.data;
 };
 
+export const deleteWorkout = async (id: string): Promise<void> => {
+  await api.delete(`/workouts/${id}`);
+  // Also delete from IndexedDB
+  await db.workouts.delete(id);
+  // Delete associated sets
+  const sets = await db.sets.where('workout_id').equals(id).toArray();
+  await db.sets.bulkDelete(sets.map(s => s.id));
+};
+
 export const saveWorkoutAsTemplate = async (
   workoutId: string,
   templateName: string

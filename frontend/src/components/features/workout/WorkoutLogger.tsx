@@ -6,6 +6,7 @@ import {
   completeWorkout,
   saveWorkoutAsTemplate,
   getPreviousPerformance,
+  deleteWorkout,
 } from '../../../services/workout.service';
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetRow } from './SetRow';
@@ -189,6 +190,22 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     }
   };
 
+  const handleCancelWorkout = async () => {
+    if (!workout) return;
+
+    if (!confirm('Cancel this workout? All progress will be lost.')) {
+      return;
+    }
+
+    try {
+      await deleteWorkout(workout.id);
+      onComplete();
+    } catch (error) {
+      console.error('Failed to cancel workout:', error);
+      alert('Failed to cancel workout');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -288,6 +305,12 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           className="w-full btn btn-primary"
         >
           Complete Workout
+        </button>
+        <button
+          onClick={handleCancelWorkout}
+          className="w-full btn bg-red-600 hover:bg-red-700 text-white"
+        >
+          Cancel Workout
         </button>
       </div>
 
