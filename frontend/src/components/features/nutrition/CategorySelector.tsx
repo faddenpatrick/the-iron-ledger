@@ -49,9 +49,10 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       setNewCategoryName('');
       setShowCreateModal(false);
       onSelectCategory(newCategory.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create category:', error);
-      alert('Failed to create category');
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      alert(`Failed to create category: ${errorMsg}`);
     }
   };
 
