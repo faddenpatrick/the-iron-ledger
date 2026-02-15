@@ -10,15 +10,17 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
 
   useEffect(() => {
-    startScanner();
     return () => {
       stopScanner();
     };
   }, []);
 
   const startScanner = async () => {
+    setError('');
     try {
       const scanner = new Html5Qrcode('barcode-reader');
       scannerRef.current = scanner;
@@ -42,7 +44,17 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
       setIsScanning(true);
     } catch (err: any) {
       console.error('Failed to start scanner:', err);
-      setError(err?.message || 'Failed to access camera. Please grant camera permissions.');
+      let errorMsg = 'Failed to access camera.';
+
+      if (err?.message?.includes('Permission denied')) {
+        errorMsg = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+      } else if (err?.message?.includes('NotFoundError')) {
+        errorMsg = 'No camera found on this device.';
+      } else if (err?.message?.includes('NotAllowedError')) {
+        errorMsg = 'Camera access blocked. Check your browser permissions.';
+      }
+
+      setError(errorMsg);
     }
   };
 
@@ -51,6 +63,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
       try {
         await scannerRef.current.stop();
         scannerRef.current.clear();
+        setIsScanning(false);
       } catch (err) {
         console.error('Error stopping scanner:', err);
       }
@@ -60,6 +73,13 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
   const handleClose = async () => {
     await stopScanner();
     onClose();
+  };
+
+  const handleManualSubmit = () => {
+    if (manualBarcode.trim()) {
+      onScan(manualBarcode.trim());
+      handleClose();
+    }
   };
 
   return (
@@ -75,18 +95,78 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           </button>
         </div>
 
-        {error ? (
-          <div className="bg-red-900/30 text-red-400 p-4 rounded-lg mb-4">
-            <p className="font-medium mb-2">Camera Error</p>
-            <p className="text-sm">{error}</p>
-            <p className="text-xs mt-2">Make sure you've granted camera permissions in your browser settings.</p>
+        {!isScanning && !showManualInput && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-4">
+            <p className="text-gray-300 text-sm mb-4 text-center">
+              Click below to start camera and scan a barcode
+            </p>
+            <button
+              onClick={startScanner}
+              className="btn btn-primary w-full mb-3"
+            >
+              📷 Start Camera
+            </button>
+            <button
+              onClick={() => setShowManualInput(true)}
+              className="btn btn-secondary w-full text-sm"
+            >
+              Enter Barcode Manually
+            </button>
           </div>
-        ) : (
+        )}
+
+        {error && (
+          <div className="bg-red-900/30 text-red-400 p-4 rounded-lg mb-4">
+            <p className="font-medium mb-2">❌ Camera Error</p>
+            <p className="text-sm mb-3">{error}</p>
+            <details className="text-xs">
+              <summary className="cursor-pointer mb-2 font-medium">How to enable camera</summary>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Click the camera icon in your browser's address bar</li>
+                <li>Select "Allow" for camera permissions</li>
+                <li>Reload the page if needed</li>
+                <li>Or use manual entry below</li>
+              </ul>
+            </details>
+            <button
+              onClick={() => setShowManualInput(true)}
+              className="btn btn-secondary w-full mt-3 text-sm"
+            >
+              Enter Barcode Manually Instead
+            </button>
+          </div>
+        )}
+
+        {isScanning && (
           <div className="bg-gray-800 rounded-lg p-4 mb-4">
             <p className="text-gray-300 text-sm mb-4 text-center">
               Position the barcode within the frame
             </p>
             <div id="barcode-reader" className="rounded-lg overflow-hidden"></div>
+          </div>
+        )}
+
+        {showManualInput && (
+          <div className="bg-gray-800 rounded-lg p-4 mb-4">
+            <p className="text-gray-300 text-sm mb-3">Enter barcode number:</p>
+            <input
+              type="text"
+              value={manualBarcode}
+              onChange={(e) => setManualBarcode(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleManualSubmit();
+              }}
+              placeholder="e.g., 012345678901"
+              className="input mb-3"
+              autoFocus
+            />
+            <button
+              onClick={handleManualSubmit}
+              disabled={!manualBarcode.trim()}
+              className="btn btn-primary w-full"
+            >
+              Look Up Barcode
+            </button>
           </div>
         )}
 
