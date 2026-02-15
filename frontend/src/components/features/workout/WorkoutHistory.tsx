@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WorkoutList } from '../../../types/workout';
 import { getWorkouts } from '../../../services/workout.service';
-import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays, startOfWeek } from 'date-fns';
 
 interface WorkoutHistoryProps {
   workoutType: 'lifting' | 'cardio';
@@ -62,12 +62,6 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
     }
   };
 
-  const calculateTotalVolume = (workout: WorkoutList): number => {
-    // Volume = sum of (weight × reps) for all sets
-    // Note: WorkoutList doesn't include sets, so we'll show set count for now
-    // This would need to be enhanced if we want full volume calculation
-    return 0;
-  };
 
   const formatDuration = (started: string, completed: string): string => {
     const start = new Date(started);
