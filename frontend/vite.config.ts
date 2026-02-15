@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'HealthApp - Workout & Nutrition Tracker',
-        short_name: 'HealthApp',
-        description: 'Track your workouts and nutrition offline-first',
+        name: 'The Iron Ledge - Workout & Nutrition Tracker',
+        short_name: 'Iron Ledge',
+        description: 'Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when offline.',
         theme_color: '#0c4a6e',
         background_color: '#0f172a',
         display: 'standalone',

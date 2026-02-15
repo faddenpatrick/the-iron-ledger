@@ -1,4 +1,6 @@
-# HealthApp - Workout & Nutrition Tracker PWA
+# The Iron Ledge - Workout & Nutrition Tracker PWA
+
+**Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when you're offline.**
 
 A self-hosted Progressive Web App for tracking workouts and nutrition with complete offline functionality.
 
