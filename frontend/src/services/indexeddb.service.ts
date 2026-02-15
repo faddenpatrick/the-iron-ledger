@@ -48,6 +48,7 @@ export class HealthAppDatabase extends Dexie {
   constructor() {
     super('HealthAppDB');
 
+    // Version 1: Initial schema
     this.version(1).stores({
       // Workout stores
       exercises: 'id, name, muscle_group, equipment, is_custom, user_id',
@@ -65,6 +66,16 @@ export class HealthAppDatabase extends Dexie {
 
       // Sync queue
       syncQueue: '++id, timestamp, synced, entityType',
+    });
+
+    // Version 2: Add lifting/cardio split fields
+    this.version(2).stores({
+      // Update workouts to include workout_type
+      workouts: 'id, user_id, template_id, workout_type, workout_date, started_at, completed_at',
+      // Update workoutTemplates to include workout_type
+      workoutTemplates: 'id, user_id, name, workout_type, created_at',
+      // Update sets to include set_type and is_completed
+      sets: 'id, workout_id, exercise_id, set_number, set_type, is_completed, created_at',
     });
   }
 }
