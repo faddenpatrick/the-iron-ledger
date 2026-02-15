@@ -12,11 +12,11 @@ const PRESET_DURATIONS = [
   { label: '3m', seconds: 180 },
 ];
 
-export const RestTimer: React.FC<RestTimerProps> = ({ defaultSeconds = 90 }) => {
+export const RestTimer: React.FC<RestTimerProps> = ({ defaultSeconds = 60 }) => {
   const { timeRemaining, isActive, formatTime, start, pause, resume, skip } =
     useRestTimer(defaultSeconds);
   const [showPresets, setShowPresets] = useState(true);
-  const [customSeconds, setCustomSeconds] = useState('90');
+  const [customSeconds, setCustomSeconds] = useState('60');
   const [justCompleted, setJustCompleted] = useState(false);
 
   // Flash green when timer completes
