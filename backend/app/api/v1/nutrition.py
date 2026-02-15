@@ -416,6 +416,53 @@ def delete_meal_item(
     return None
 
 
+@router.post("/meals/{meal_id}/items", response_model=MealItemResponse)
+def add_meal_item(
+    meal_id: UUID,
+    item_data: MealItemCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add a new item to an existing meal."""
+    # Verify the meal belongs to the user
+    meal = db.query(Meal).filter(
+        Meal.id == meal_id,
+        Meal.user_id == current_user.id,
+        Meal.deleted_at.is_(None)
+    ).first()
+
+    if not meal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal not found"
+        )
+
+    # Get the food
+    food = db.query(Food).filter(Food.id == item_data.food_id).first()
+    if not food:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Food not found"
+        )
+
+    # Create meal item with snapshot
+    meal_item = MealItem(
+        meal_id=meal.id,
+        food_id=food.id,
+        food_name_snapshot=food.name,
+        calories_snapshot=food.calories,
+        protein_snapshot=food.protein,
+        carbs_snapshot=food.carbs,
+        fat_snapshot=food.fat,
+        servings=item_data.servings
+    )
+    db.add(meal_item)
+    db.commit()
+    db.refresh(meal_item)
+
+    return meal_item
+
+
 @router.post("/meals/{meal_id}/copy", response_model=MealResponse)
 def copy_meal(
     meal_id: UUID,

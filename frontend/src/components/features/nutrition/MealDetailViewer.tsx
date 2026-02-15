@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Meal } from '../../../types/nutrition';
-import { getMeal, deleteMealItem } from '../../../services/nutrition.service';
+import { Meal, Food } from '../../../types/nutrition';
+import { getMeal, deleteMealItem, addMealItem } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
+import { FoodSearch } from './FoodSearch';
+import { PortionInput } from './PortionInput';
 
 interface MealDetailViewerProps {
   mealId: string;
@@ -17,6 +19,10 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
   const [meal, setMeal] = useState<Meal | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
+  const [showPortionInput, setShowPortionInput] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [addingItem, setAddingItem] = useState(false);
 
   useEffect(() => {
     loadMeal();
@@ -44,6 +50,31 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
     } catch (error) {
       console.error('Failed to delete meal item:', error);
       alert('Failed to delete item');
+    }
+  };
+
+  const handleFoodSelect = (food: Food) => {
+    setSelectedFood(food);
+    setShowFoodSearch(false);
+    setShowPortionInput(true);
+  };
+
+  const handleAddFood = async (servings: number) => {
+    if (!selectedFood || !meal) return;
+
+    setAddingItem(true);
+    try {
+      await addMealItem(meal.id, selectedFood.id, servings);
+      // Reload the meal to get updated items
+      await loadMeal();
+      setSelectedFood(null);
+      setShowPortionInput(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to add meal item:', error);
+      alert('Failed to add item');
+    } finally {
+      setAddingItem(false);
     }
   };
 
@@ -176,8 +207,15 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
           )}
         </div>
 
-        {/* Close Button */}
-        <div className="mt-6">
+        {/* Action Buttons */}
+        <div className="mt-6 space-y-2">
+          <button
+            onClick={() => setShowFoodSearch(true)}
+            className="w-full btn btn-primary"
+            disabled={addingItem}
+          >
+            + Add Food Item
+          </button>
           <button
             onClick={onClose}
             className="w-full btn btn-secondary"
@@ -186,6 +224,25 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modals */}
+      {showFoodSearch && (
+        <FoodSearch
+          onSelect={handleFoodSelect}
+          onClose={() => setShowFoodSearch(false)}
+        />
+      )}
+
+      {showPortionInput && selectedFood && (
+        <PortionInput
+          food={selectedFood}
+          onAdd={handleAddFood}
+          onCancel={() => {
+            setShowPortionInput(false);
+            setSelectedFood(null);
+          }}
+        />
+      )}
     </div>
   );
 };

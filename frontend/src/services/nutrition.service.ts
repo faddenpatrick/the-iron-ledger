@@ -233,6 +233,17 @@ export const deleteMealItem = async (id: string): Promise<void> => {
   await api.delete(`/nutrition/meal-items/${id}`);
 };
 
+export const addMealItem = async (
+  mealId: string,
+  foodId: string,
+  servings: number
+): Promise<void> => {
+  await api.post(`/nutrition/meals/${mealId}/items`, {
+    food_id: foodId,
+    servings: servings,
+  });
+};
+
 export const copyMeal = async (
   mealId: string,
   newMealDate: string,
