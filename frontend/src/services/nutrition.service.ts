@@ -1,5 +1,6 @@
 import api from './api';
 import { db, addToSyncQueue } from './indexeddb.service';
+import { generateUUID } from '../utils/uuid';
 import {
   MealCategory,
   Food,
@@ -34,7 +35,7 @@ export const getMealCategories = async (): Promise<MealCategory[]> => {
 export const createMealCategory = async (
   data: CreateMealCategoryRequest
 ): Promise<MealCategory> => {
-  const tempId = crypto.randomUUID();
+  const tempId = generateUUID();
   const now = new Date().toISOString();
   const category: MealCategory = {
     id: tempId,
@@ -150,7 +151,7 @@ export const getMeal = async (id: string): Promise<Meal> => {
 };
 
 export const createMeal = async (data: CreateMealRequest): Promise<Meal> => {
-  const tempId = crypto.randomUUID();
+  const tempId = generateUUID();
   const now = new Date().toISOString();
 
   const meal: Meal = {
@@ -163,7 +164,7 @@ export const createMeal = async (data: CreateMealRequest): Promise<Meal> => {
     created_at: now,
     updated_at: now,
     items: data.items.map((item) => ({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       meal_id: tempId,
       food_id: item.food_id,
       food_name_snapshot: '',
