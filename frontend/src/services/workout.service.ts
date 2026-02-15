@@ -1,5 +1,6 @@
 import api from './api';
 import { db, addToSyncQueue } from './indexeddb.service';
+import { generateUUID } from '../utils/uuid';
 import {
   Exercise,
   WorkoutTemplate,
@@ -57,7 +58,7 @@ export const createExercise = async (data: {
   muscle_group?: string;
   equipment?: string;
 }): Promise<Exercise> => {
-  const tempId = crypto.randomUUID();
+  const tempId = generateUUID();
   const now = new Date().toISOString();
   const exercise: Exercise = {
     id: tempId,
@@ -175,7 +176,7 @@ export const createWorkout = async (
 ): Promise<Workout> => {
   console.log('createWorkout called with data:', data);
 
-  const tempId = crypto.randomUUID();
+  const tempId = generateUUID();
   const now = new Date().toISOString();
 
   const workout: Workout = {
@@ -262,7 +263,7 @@ export const addSet = async (
   workoutId: string,
   data: CreateSetRequest
 ): Promise<Set> => {
-  const tempId = crypto.randomUUID();
+  const tempId = generateUUID();
   const now = new Date().toISOString();
 
   const set: Set = {

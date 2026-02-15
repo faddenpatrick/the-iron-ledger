@@ -28,7 +28,8 @@
       "Bash(python3 -m alembic:*)",
       "Bash(backend/scripts/__init__.py:*)",
       "Bash(backend/scripts/seed_exercises.py:*)",
-      "Bash(frontend/src/components/features/workout/PRBadge.tsx:*)"
+      "Bash(frontend/src/components/features/workout/PRBadge.tsx:*)",
+      "Bash(/Users/patrickfadden/Documents/Projects/HealthApp/frontend/src/utils/uuid.ts:*)"
     ]
   }
 }
