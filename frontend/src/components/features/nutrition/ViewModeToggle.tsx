@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface ViewModeToggleProps {
   mode: 'today' | 'weekly';
   onModeChange: (mode: 'today' | 'weekly') => void;
