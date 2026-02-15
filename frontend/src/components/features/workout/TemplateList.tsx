@@ -9,7 +9,7 @@ interface TemplateListProps {
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   onSelectTemplate,
-  onCreateTemplate,
+  onCreateTemplate: _onCreateTemplate,
 }) => {
   const [templates, setTemplates] = useState<WorkoutTemplateList[]>([]);
   const [loading, setLoading] = useState(true);
