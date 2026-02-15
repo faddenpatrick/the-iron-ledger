@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'The Iron Ledger - Workout & Nutrition Tracker',
         short_name: 'Iron Ledger',
         description: 'Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when offline.',
-        theme_color: '#0c4a6e',
+        theme_color: '#334155',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',

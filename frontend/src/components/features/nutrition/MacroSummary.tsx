@@ -16,28 +16,28 @@ export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary }) => {
       name: 'Calories',
       current: summary.total_calories,
       target: summary.target_calories,
-      color: 'primary',
+      color: 'steel',
       unit: '',
     },
     {
       name: 'Protein',
       current: summary.total_protein,
       target: summary.target_protein,
-      color: 'blue',
+      color: 'iron',
       unit: 'g',
     },
     {
       name: 'Carbs',
       current: summary.total_carbs,
       target: summary.target_carbs,
-      color: 'green',
+      color: 'copper',
       unit: 'g',
     },
     {
       name: 'Fat',
       current: summary.total_fat,
       target: summary.target_fat,
-      color: 'yellow',
+      color: 'bronze',
       unit: 'g',
     },
   ];
@@ -63,13 +63,13 @@ export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary }) => {
                   <div className="w-full bg-gray-600 rounded-full h-2 mb-1">
                     <div
                       className={`h-2 rounded-full transition-all ${
-                        macro.color === 'primary'
-                          ? 'bg-primary-500'
-                          : macro.color === 'blue'
+                        macro.color === 'steel'
                           ? 'bg-blue-500'
-                          : macro.color === 'green'
-                          ? 'bg-green-500'
-                          : 'bg-yellow-500'
+                          : macro.color === 'iron'
+                          ? 'bg-gray-400'
+                          : macro.color === 'copper'
+                          ? 'bg-amber-500'
+                          : 'bg-yellow-700'
                       }`}
                       style={{ width: `${percentage}%` }}
                     />
@@ -87,7 +87,7 @@ export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary }) => {
 
       {!summary.target_calories && (
         <div className="mt-4 p-3 bg-gray-700 rounded-lg text-sm text-gray-400">
-          💡 Set macro targets in Settings to track your progress
+          ⚙ Set macro targets in Settings to track your progress
         </div>
       )}
     </div>

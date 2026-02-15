@@ -68,6 +68,20 @@ export interface NutritionSummary {
   target_fat: number | null;
 }
 
+export interface WeeklySummary {
+  start_date: string;
+  end_date: string;
+  days_with_data: number;
+  avg_calories: number;
+  avg_protein: number;
+  avg_carbs: number;
+  avg_fat: number;
+  target_calories: number | null;
+  target_protein: number | null;
+  target_carbs: number | null;
+  target_fat: number | null;
+}
+
 export interface CreateMealCategoryRequest {
   name: string;
   display_order?: number;

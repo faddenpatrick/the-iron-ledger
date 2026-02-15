@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings
@@ -20,6 +20,7 @@ from ...schemas.nutrition import (
     MealResponse,
     MealListResponse,
     NutritionSummaryResponse,
+    WeeklySummaryResponse,
 )
 
 router = APIRouter()
@@ -425,6 +426,61 @@ def get_nutrition_summary(
         total_protein=totals.total_protein or 0,
         total_carbs=totals.total_carbs or 0,
         total_fat=totals.total_fat or 0,
+        target_calories=settings.macro_target_calories if settings else None,
+        target_protein=settings.macro_target_protein if settings else None,
+        target_carbs=settings.macro_target_carbs if settings else None,
+        target_fat=settings.macro_target_fat if settings else None,
+    )
+
+
+@router.get("/weekly-average", response_model=WeeklySummaryResponse)
+def get_weekly_average(
+    end_date: date = Query(..., description="End date for 7-day window"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get 7-day running average nutrition summary.
+
+    Calculates averages for the 7-day period ending on end_date (inclusive).
+    Averages are calculated by dividing total by 7 days, not just logged days.
+    """
+    start_date = end_date - timedelta(days=6)  # 7 days total
+
+    # Query daily totals for each day in range
+    daily_totals = db.query(
+        Meal.meal_date,
+        func.sum(MealItem.calories_snapshot).label('daily_calories'),
+        func.sum(MealItem.protein_snapshot).label('daily_protein'),
+        func.sum(MealItem.carbs_snapshot).label('daily_carbs'),
+        func.sum(MealItem.fat_snapshot).label('daily_fat'),
+    ).join(MealItem).filter(
+        Meal.user_id == current_user.id,
+        Meal.meal_date >= start_date,
+        Meal.meal_date <= end_date,
+        Meal.deleted_at.is_(None)
+    ).group_by(Meal.meal_date).all()
+
+    # Calculate totals across all days with data
+    total_calories = sum(day.daily_calories or 0 for day in daily_totals)
+    total_protein = sum(day.daily_protein or 0 for day in daily_totals)
+    total_carbs = sum(day.daily_carbs or 0 for day in daily_totals)
+    total_fat = sum(day.daily_fat or 0 for day in daily_totals)
+
+    # Get user settings for targets
+    settings = db.query(UserSettings).filter(
+        UserSettings.user_id == current_user.id
+    ).first()
+
+    # Calculate averages (divide by 7 days, not just logged days)
+    return WeeklySummaryResponse(
+        start_date=start_date,
+        end_date=end_date,
+        days_with_data=len(daily_totals),
+        avg_calories=total_calories // 7,
+        avg_protein=total_protein // 7,
+        avg_carbs=total_carbs // 7,
+        avg_fat=total_fat // 7,
         target_calories=settings.macro_target_calories if settings else None,
         target_protein=settings.macro_target_protein if settings else None,
         target_carbs=settings.macro_target_carbs if settings else None,

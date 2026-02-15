@@ -143,3 +143,18 @@ class NutritionSummaryResponse(BaseModel):
     target_protein: Optional[int]
     target_carbs: Optional[int]
     target_fat: Optional[int]
+
+
+class WeeklySummaryResponse(BaseModel):
+    """7-day running average summary."""
+    start_date: date
+    end_date: date
+    days_with_data: int
+    avg_calories: int
+    avg_protein: int
+    avg_carbs: int
+    avg_fat: int
+    target_calories: Optional[int]
+    target_protein: Optional[int]
+    target_carbs: Optional[int]
+    target_fat: Optional[int]

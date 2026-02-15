@@ -3,10 +3,10 @@ import { NavLink } from 'react-router-dom';
 
 export const BottomNav: React.FC = () => {
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/workout', label: 'Workout', icon: '💪' },
-    { path: '/nutrition', label: 'Nutrition', icon: '🥗' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
+    { path: '/', label: 'Dashboard', icon: '▦' },
+    { path: '/workout', label: 'Workout', icon: '⚡' },
+    { path: '/nutrition', label: 'Nutrition', icon: '⚖' },
+    { path: '/settings', label: 'Settings', icon: '⚙' },
   ];
 
   return (

@@ -116,7 +116,7 @@ export const Dashboard: React.FC = () => {
                     {nutritionSummary.target_calories && (
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
-                          className="bg-primary-500 h-2 rounded-full transition-all"
+                          className="bg-blue-500 h-2 rounded-full transition-all"
                           style={{
                             width: `${calculateMacroPercentage(
                               nutritionSummary.total_calories,
@@ -141,7 +141,7 @@ export const Dashboard: React.FC = () => {
                     {nutritionSummary.target_protein && (
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
-                          className="bg-green-500 h-2 rounded-full transition-all"
+                          className="bg-gray-400 h-2 rounded-full transition-all"
                           style={{
                             width: `${calculateMacroPercentage(
                               nutritionSummary.total_protein,
@@ -166,7 +166,7 @@ export const Dashboard: React.FC = () => {
                     {nutritionSummary.target_carbs && (
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
-                          className="bg-blue-500 h-2 rounded-full transition-all"
+                          className="bg-amber-500 h-2 rounded-full transition-all"
                           style={{
                             width: `${calculateMacroPercentage(
                               nutritionSummary.total_carbs,
@@ -191,7 +191,7 @@ export const Dashboard: React.FC = () => {
                     {nutritionSummary.target_fat && (
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
-                          className="bg-yellow-500 h-2 rounded-full transition-all"
+                          className="bg-yellow-700 h-2 rounded-full transition-all"
                           style={{
                             width: `${calculateMacroPercentage(
                               nutritionSummary.total_fat,
@@ -207,7 +207,7 @@ export const Dashboard: React.FC = () => {
                 {!nutritionSummary.target_calories && (
                   <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded text-sm">
                     <p className="text-yellow-400">
-                      💡 Set macro targets in Settings to track your progress
+                      ⚙ Set macro targets in Settings to track your progress
                     </p>
                   </div>
                 )}
@@ -295,25 +295,25 @@ export const Dashboard: React.FC = () => {
             {/* Welcome message for new users */}
             {todayWorkouts.length === 0 && todayMeals.length === 0 && (
               <div className="card">
-                <h3 className="text-xl font-bold mb-3">Welcome to HealthApp! 👋</h3>
-                <p className="text-gray-400 mb-4">
-                  Your offline-first workout and nutrition tracker. Get started by:
+                <h3 className="text-xl font-bold mb-3">Welcome to The Iron Ledger!</h3>
+                <p className="text-gray-300 mb-4">
+                  Your personal gains ledger. Track workouts and nutrition with the strength of iron.
                 </p>
                 <ul className="space-y-2 text-sm text-gray-300 ml-4">
                   <li className="flex items-start">
-                    <span className="mr-2">💪</span>
+                    <span className="mr-2">⚡</span>
                     <span>Logging your first workout or creating a template</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="mr-2">🍎</span>
+                    <span className="mr-2">⚖</span>
                     <span>Creating meal categories and tracking nutrition</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="mr-2">🎯</span>
+                    <span className="mr-2">▦</span>
                     <span>Setting your macro targets in Settings</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="mr-2">📱</span>
+                    <span className="mr-2">⚙</span>
                     <span>Installing the app on your phone for offline use</span>
                   </li>
                 </ul>

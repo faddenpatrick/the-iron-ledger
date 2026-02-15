@@ -35,8 +35,8 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-900">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">HealthApp</h1>
-          <p className="text-gray-400">Track your fitness journey</p>
+          <h1 className="text-4xl font-bold text-gradient-iron mb-2">The Iron Ledger</h1>
+          <p className="text-gray-400">Track strength. Build consistency.</p>
         </div>
 
         <div className="card">

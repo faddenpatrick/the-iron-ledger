@@ -7,6 +7,7 @@ import {
   Meal,
   MealList,
   NutritionSummary,
+  WeeklySummary,
   CreateMealCategoryRequest,
   CreateFoodRequest,
   CreateMealRequest,
@@ -234,6 +235,16 @@ export const getNutritionSummary = async (
 ): Promise<NutritionSummary> => {
   const response = await api.get('/nutrition/summary', {
     params: { summary_date: date },
+  });
+  return response.data;
+};
+
+// Weekly Summary
+export const getWeeklySummary = async (
+  endDate: string
+): Promise<WeeklySummary> => {
+  const response = await api.get('/nutrition/weekly-average', {
+    params: { end_date: endDate },
   });
   return response.data;
 };
