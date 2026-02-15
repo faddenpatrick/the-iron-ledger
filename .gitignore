@@ -67,3 +67,4 @@ postgres_data/
 backend.pid
 *.tmp
 *.temp
+.claude/
