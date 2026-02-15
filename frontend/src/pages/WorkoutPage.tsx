@@ -3,6 +3,7 @@ import { Header } from '../components/layout/Header';
 import { TemplateList } from '../components/features/workout/TemplateList';
 import { WorkoutLogger } from '../components/features/workout/WorkoutLogger';
 import { WorkoutHistory } from '../components/features/workout/WorkoutHistory';
+import { WorkoutViewer } from '../components/features/workout/WorkoutViewer';
 import { CardioPlaceholder } from '../components/features/workout/CardioPlaceholder';
 import { TemplateBuilder } from '../components/features/workout/TemplateBuilder';
 import { createWorkout } from '../services/workout.service';
@@ -16,6 +17,7 @@ export const WorkoutPage: React.FC = () => {
   const [topTab, setTopTab] = useState<TopTab>('lifting');
   const [activeTab, setActiveTab] = useState<SubTab>('templates');
   const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null);
+  const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [refreshTemplates, setRefreshTemplates] = useState(0);
 
@@ -168,13 +170,19 @@ export const WorkoutPage: React.FC = () => {
             )}
 
             {activeTab === 'history' && (
-              <WorkoutHistory
-                workoutType={topTab}
-                onSelectWorkout={(id) => {
-                  setActiveWorkoutId(id);
-                  setActiveTab('active');
-                }}
-              />
+              <>
+                {viewingWorkoutId ? (
+                  <WorkoutViewer
+                    workoutId={viewingWorkoutId}
+                    onClose={() => setViewingWorkoutId(null)}
+                  />
+                ) : (
+                  <WorkoutHistory
+                    workoutType={topTab}
+                    onSelectWorkout={(id) => setViewingWorkoutId(id)}
+                  />
+                )}
+              </>
             )}
           </>
         )}
