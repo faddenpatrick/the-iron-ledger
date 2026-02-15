@@ -16,38 +16,60 @@ export const Dashboard: React.FC = () => {
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  useEffect(() => {
-    const fetchTodayData = async () => {
+  const fetchTodayData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch today's workouts
+      const workouts = await getWorkouts({
+        start_date: today,
+        end_date: today,
+      });
+      setTodayWorkouts(workouts);
+
+      // Fetch today's meals
+      const meals = await getMeals(today);
+      setTodayMeals(meals);
+
+      // Fetch nutrition summary
       try {
-        setLoading(true);
-
-        // Fetch today's workouts
-        const workouts = await getWorkouts({
-          start_date: today,
-          end_date: today,
-        });
-        setTodayWorkouts(workouts);
-
-        // Fetch today's meals
-        const meals = await getMeals(today);
-        setTodayMeals(meals);
-
-        // Fetch nutrition summary
-        try {
-          const summary = await getNutritionSummary(today);
-          setNutritionSummary(summary);
-        } catch (error) {
-          // Summary might not exist yet
-          setNutritionSummary(null);
-        }
+        const summary = await getNutritionSummary(today);
+        setNutritionSummary(summary);
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
+        // Summary might not exist yet
+        setNutritionSummary(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on mount and when date changes
+  useEffect(() => {
+    fetchTodayData();
+  }, [today]);
+
+  // Refetch data when page becomes visible (e.g., after navigating back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchTodayData();
       }
     };
 
-    fetchTodayData();
+    const handleFocus = () => {
+      fetchTodayData();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [today]);
 
   const calculateMacroPercentage = (current: number, target: number | null) => {
