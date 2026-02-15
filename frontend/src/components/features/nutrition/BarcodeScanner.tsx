@@ -34,7 +34,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           onScan(decodedText);
           stopScanner();
         },
-        (errorMessage) => {
+        (_errorMessage) => {
           // Scanning error (ignore, happens frequently)
         }
       );
