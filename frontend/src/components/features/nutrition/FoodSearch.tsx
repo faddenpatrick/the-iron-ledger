@@ -38,10 +38,20 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
   };
 
   const handleCreateCustomFood = async () => {
+    // Validate all required fields
+    if (!customFood.name.trim()) {
+      alert('Please enter a food name');
+      return;
+    }
+    if (!customFood.serving_size.trim()) {
+      alert('Please enter a serving size');
+      return;
+    }
+
     try {
       const newFood = await createFood({
-        name: customFood.name,
-        serving_size: customFood.serving_size,
+        name: customFood.name.trim(),
+        serving_size: customFood.serving_size.trim(),
         calories: parseInt(customFood.calories) || 0,
         protein: parseInt(customFood.protein) || 0,
         carbs: parseInt(customFood.carbs) || 0,
@@ -51,7 +61,8 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
       onClose();
     } catch (error: any) {
       console.error('Failed to create food:', error);
-      alert(error?.response?.data?.detail || 'Failed to create custom food');
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Failed to create custom food';
+      alert(`Error: ${errorMsg}`);
     }
   };
 
@@ -95,18 +106,23 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
             /* Custom Food Form */
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Food Name</label>
+                <label className="block text-sm font-medium mb-1">
+                  Food Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={customFood.name}
                   onChange={(e) => setCustomFood({ ...customFood, name: e.target.value })}
                   placeholder="e.g., Homemade Protein Shake"
                   className="input"
+                  autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Serving Size</label>
+                <label className="block text-sm font-medium mb-1">
+                  Serving Size <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={customFood.serving_size}
@@ -164,11 +180,14 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
 
               <button
                 onClick={handleCreateCustomFood}
-                disabled={!customFood.name || !customFood.serving_size}
                 className="btn btn-primary w-full"
               >
-                Add Custom Food
+                Add & Use This Food
               </button>
+
+              <p className="text-xs text-gray-400 text-center">
+                <span className="text-red-500">*</span> Required fields
+              </p>
             </div>
           ) : (
             /* Search Results */
