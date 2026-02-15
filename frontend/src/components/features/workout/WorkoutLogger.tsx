@@ -10,6 +10,14 @@ import {
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetRow } from './SetRow';
 import { RestTimer } from './RestTimer';
+import { PRBadge } from './PRBadge';
+
+// Brzycki formula for 1RM calculation
+const calculate1RM = (weight: number, reps: number): number => {
+  if (!weight || !reps) return 0;
+  if (reps === 1) return weight;
+  return weight * (36 / (37 - reps));
+};
 
 interface WorkoutLoggerProps {
   workoutId: string;
@@ -78,6 +86,51 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     // Find the matching set number, or return null
     const matchingSet = previous.previous_sets.find((s) => s.set_number === setNumber);
     return matchingSet || null;
+  };
+
+  // Calculate best 1RM for an exercise from current workout sets
+  const getBest1RM = (exerciseId: string): number => {
+    if (!workout) return 0;
+
+    const exerciseSets = workout.sets.filter((s) => s.exercise_id === exerciseId);
+    let best1RM = 0;
+
+    for (const set of exerciseSets) {
+      if (set.weight && set.reps) {
+        const rm = calculate1RM(set.weight, set.reps);
+        if (rm > best1RM) {
+          best1RM = rm;
+        }
+      }
+    }
+
+    return best1RM;
+  };
+
+  // Calculate historical best 1RM from previous performance
+  const getHistoricalBest1RM = (exerciseId: string): number => {
+    const previous = previousPerformance[exerciseId];
+    if (!previous || !previous.has_previous) return 0;
+
+    let best1RM = 0;
+    for (const set of previous.previous_sets) {
+      if (set.weight && set.reps) {
+        const rm = calculate1RM(set.weight, set.reps);
+        if (rm > best1RM) {
+          best1RM = rm;
+        }
+      }
+    }
+
+    return best1RM;
+  };
+
+  // Check if current performance is a PR
+  const isPR = (exerciseId: string): boolean => {
+    const current = getBest1RM(exerciseId);
+    const historical = getHistoricalBest1RM(exerciseId);
+
+    return current > 0 && historical > 0 && current > historical;
   };
 
   const handleAddExercise = async (exercise: Exercise) => {
@@ -166,10 +219,24 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
       {/* Exercises and Sets */}
       <div className="space-y-6">
-        {exercises.map((group) => (
-          <div key={group.exerciseId} className="card">
-            <h3 className="font-semibold text-lg mb-3">{group.exerciseName}</h3>
-            <div className="space-y-2 mb-3">
+        {exercises.map((group) => {
+          const best1RM = getBest1RM(group.exerciseId);
+          const isPersonalRecord = isPR(group.exerciseId);
+
+          return (
+            <div key={group.exerciseId} className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-lg">{group.exerciseName}</h3>
+                <div className="flex items-center gap-2">
+                  {best1RM > 0 && (
+                    <div className="text-sm text-gray-400">
+                      Est. 1RM: <span className="font-semibold text-white">{best1RM.toFixed(1)} lbs</span>
+                    </div>
+                  )}
+                  <PRBadge isPersonalRecord={isPersonalRecord} />
+                </div>
+              </div>
+              <div className="space-y-2 mb-3">
               {group.sets
                 .sort((a, b) => a.set_number - b.set_number)
                 .map((set, index) => (
@@ -194,7 +261,8 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               + Add Set
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Exercise Button */}

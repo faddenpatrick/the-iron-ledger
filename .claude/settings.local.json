@@ -10,7 +10,25 @@
       "Bash(test:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git remote:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(ssh-keyscan:*)",
+      "Bash(~/.ssh/known_hosts)",
+      "WebSearch",
+      "WebFetch(domain:www.hevyapp.com)",
+      "WebFetch(domain:himanshuprodesign.medium.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:liftlog.online)",
+      "WebFetch(domain:stormotion.io)",
+      "Bash(python -m alembic upgrade:*)",
+      "Bash(python3 -m alembic:*)",
+      "Bash(backend/scripts/__init__.py:*)",
+      "Bash(backend/scripts/seed_exercises.py:*)",
+      "Bash(frontend/src/components/features/workout/PRBadge.tsx:*)"
     ]
   }
 }
