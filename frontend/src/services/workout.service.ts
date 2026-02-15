@@ -173,6 +173,8 @@ export const getWorkout = async (id: string): Promise<Workout> => {
 export const createWorkout = async (
   data: CreateWorkoutRequest
 ): Promise<Workout> => {
+  console.log('createWorkout called with data:', data);
+
   const tempId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -190,14 +192,25 @@ export const createWorkout = async (
     sets: [],
   };
 
+  console.log('Workout object created:', workout);
+
   // Save to IndexedDB immediately
-  await db.workouts.add(workout);
+  try {
+    console.log('Attempting to save to IndexedDB...');
+    await db.workouts.add(workout);
+    console.log('Saved to IndexedDB successfully');
+  } catch (dbError) {
+    console.error('IndexedDB save failed:', dbError);
+    throw new Error(`IndexedDB error: ${dbError instanceof Error ? dbError.message : 'Unknown'}`);
+  }
 
   // Sync with server
   if (navigator.onLine) {
     try {
+      console.log('Attempting to sync with server...');
       const response = await api.post('/workouts', data);
       const serverWorkout = response.data;
+      console.log('Server workout created:', serverWorkout);
       // Replace temp workout with server version
       await db.workouts.delete(tempId);
       await db.workouts.add(serverWorkout);
@@ -214,6 +227,7 @@ export const createWorkout = async (
       return workout;
     }
   } else {
+    console.log('Offline - adding to sync queue');
     await addToSyncQueue({
       method: 'POST',
       endpoint: '/workouts',
