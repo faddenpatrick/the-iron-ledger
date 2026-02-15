@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useRestTimer } from '../../../hooks/useRestTimer';
 
 interface RestTimerProps {
-  defaultSeconds?: number;
+  timeRemaining: number;
+  isActive: boolean;
+  formatTime: () => string;
+  start: (seconds?: number) => void;
+  pause: () => void;
+  resume: () => void;
+  skip: () => void;
 }
 
 const PRESET_DURATIONS = [
@@ -12,9 +17,15 @@ const PRESET_DURATIONS = [
   { label: '3m', seconds: 180 },
 ];
 
-export const RestTimer: React.FC<RestTimerProps> = ({ defaultSeconds = 60 }) => {
-  const { timeRemaining, isActive, formatTime, start, pause, resume, skip } =
-    useRestTimer(defaultSeconds);
+export const RestTimer: React.FC<RestTimerProps> = ({
+  timeRemaining,
+  isActive,
+  formatTime,
+  start,
+  pause,
+  resume,
+  skip,
+}) => {
   const [showPresets, setShowPresets] = useState(true);
   const [customSeconds, setCustomSeconds] = useState('60');
   const [justCompleted, setJustCompleted] = useState(false);

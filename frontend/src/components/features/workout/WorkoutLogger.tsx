@@ -30,7 +30,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   onComplete,
 }) => {
   const { workout, loading, addNewSet, updateExistingSet, removeSet } = useWorkout(workoutId);
-  const { start: startTimer } = useRestTimer();
+  const restTimer = useRestTimer(60);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -263,16 +263,13 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                     setNumber={index + 1}
                     previousData={getPreviousSetData(group.exerciseId, index + 1)}
                     onUpdate={(data) => updateExistingSet(set.id, data)}
-                    onComplete={() => startTimer()}
+                    onComplete={() => restTimer.start()}
                     onDelete={() => removeSet(set.id)}
                   />
                 ))}
             </div>
             <button
-              onClick={() => {
-                handleAddSet(group.exerciseId);
-                startTimer();
-              }}
+              onClick={() => handleAddSet(group.exerciseId)}
               className="w-full btn btn-secondary"
             >
               + Add Set
@@ -358,7 +355,15 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       )}
 
       {/* Rest Timer */}
-      <RestTimer />
+      <RestTimer
+        timeRemaining={restTimer.timeRemaining}
+        isActive={restTimer.isActive}
+        formatTime={restTimer.formatTime}
+        start={restTimer.start}
+        pause={restTimer.pause}
+        resume={restTimer.resume}
+        skip={restTimer.skip}
+      />
     </div>
   );
 };
