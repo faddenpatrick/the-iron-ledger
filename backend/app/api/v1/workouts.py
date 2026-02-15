@@ -25,6 +25,8 @@ from ...schemas.workout import (
     SetUpdate,
     SetResponse,
     SaveAsTemplateRequest,
+    PreviousPerformanceResponse,
+    PreviousSetData,
 )
 
 router = APIRouter()
@@ -56,6 +58,7 @@ def create_template(
     # Create template
     template = WorkoutTemplate(
         name=template_data.name,
+        workout_type=template_data.workout_type,
         user_id=current_user.id
     )
     db.add(template)
@@ -144,6 +147,10 @@ def update_template(
     if template_data.name is not None:
         template.name = template_data.name
 
+    # Update workout_type
+    if template_data.workout_type is not None:
+        template.workout_type = template_data.workout_type
+
     # Update exercises if provided
     if template_data.exercises is not None:
         # Delete existing exercises
@@ -231,6 +238,7 @@ def create_workout(
         user_id=current_user.id,
         template_id=workout_data.template_id,
         template_name_snapshot=template_name_snapshot,
+        workout_type=workout_data.workout_type,
         workout_date=workout_data.workout_date,
         started_at=workout_data.started_at
     )
@@ -345,6 +353,7 @@ def save_workout_as_template(
     # Create template
     template = WorkoutTemplate(
         name=save_data.template_name,
+        workout_type=workout.workout_type,
         user_id=current_user.id
     )
     db.add(template)
@@ -378,6 +387,77 @@ def save_workout_as_template(
     ).filter(WorkoutTemplate.id == template.id).first()
 
     return template
+
+
+@router.get("/{workout_id}/exercises/{exercise_id}/previous", response_model=PreviousPerformanceResponse)
+def get_previous_performance(
+    workout_id: UUID,
+    exercise_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get previous performance for an exercise.
+
+    Returns sets from the most recent completed workout where this exercise was logged
+    (before the current workout date).
+    """
+    # Verify current workout belongs to user
+    current_workout = db.query(Workout).filter(
+        Workout.id == workout_id,
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None)
+    ).first()
+
+    if not current_workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workout not found"
+        )
+
+    # Find the most recent completed workout with this exercise (before current workout)
+    previous_workout = db.query(Workout).join(
+        Set, Set.workout_id == Workout.id
+    ).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),  # Only completed workouts
+        Workout.workout_date < current_workout.workout_date,
+        Set.exercise_id == exercise_id
+    ).order_by(Workout.workout_date.desc()).first()
+
+    if not previous_workout:
+        # No previous performance found
+        return PreviousPerformanceResponse(
+            exercise_id=exercise_id,
+            has_previous=False,
+            previous_workout_date=None,
+            previous_sets=[]
+        )
+
+    # Get sets from previous workout for this exercise (limit to 10)
+    previous_sets = db.query(Set).filter(
+        Set.workout_id == previous_workout.id,
+        Set.exercise_id == exercise_id
+    ).order_by(Set.set_number).limit(10).all()
+
+    # Convert to response format
+    set_data = [
+        PreviousSetData(
+            set_number=s.set_number,
+            weight=s.weight,
+            reps=s.reps,
+            rpe=s.rpe
+        )
+        for s in previous_sets
+    ]
+
+    return PreviousPerformanceResponse(
+        exercise_id=exercise_id,
+        has_previous=True,
+        previous_workout_date=previous_workout.workout_date,
+        previous_sets=set_data
+    )
 
 
 # ===== SETS =====
@@ -470,6 +550,12 @@ def update_set(
     update_data = set_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(set_obj, field, value)
+
+    # If marking as completed, set timestamp
+    if 'is_completed' in update_data and update_data['is_completed']:
+        set_obj.completed_at = datetime.utcnow()
+    elif 'is_completed' in update_data and not update_data['is_completed']:
+        set_obj.completed_at = None
 
     # Update workout timestamp
     workout.updated_at = datetime.utcnow()

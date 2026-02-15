@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .api.v1 import auth, exercises, workouts, nutrition, settings as settings_router, openfoodfacts
+from .database import SessionLocal
+from scripts.seed_exercises import seed_exercises
 
 # Create FastAPI app
 app = FastAPI(
@@ -38,3 +40,15 @@ def read_root():
 def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup."""
+    db = SessionLocal()
+    try:
+        seed_exercises(db)
+    except Exception as e:
+        print(f"Error during startup: {e}")
+    finally:
+        db.close()

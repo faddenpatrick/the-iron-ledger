@@ -1,7 +1,7 @@
 """Workout session and set tracking models."""
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Date
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from ..database import Base
@@ -19,6 +19,7 @@ class Workout(Base):
     # Snapshot of template name (preserves history if template renamed/deleted)
     template_name_snapshot = Column(String(255), nullable=True)
 
+    workout_type = Column(String(20), nullable=False, default='lifting', index=True)  # 'lifting' or 'cardio'
     workout_date = Column(Date, nullable=False, index=True)
     started_at = Column(DateTime, nullable=False)
     completed_at = Column(DateTime, nullable=True)
@@ -46,9 +47,14 @@ class Set(Base):
     exercise_name_snapshot = Column(String(255), nullable=False)
 
     set_number = Column(Integer, nullable=False)  # 1, 2, 3, etc.
+    set_type = Column(String(20), nullable=False, default='normal')  # 'warmup', 'normal', 'drop_set', 'failure'
     weight = Column(Float, nullable=True)  # Weight used
     reps = Column(Integer, nullable=True)  # Reps completed
     rpe = Column(Float, nullable=True)  # Rate of Perceived Exertion (1-10)
+
+    # Set completion tracking
+    is_completed = Column(Boolean, nullable=False, default=False)
+    completed_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

@@ -9,7 +9,9 @@ import {
   CreateTemplateRequest,
   CreateWorkoutRequest,
   CreateSetRequest,
+  UpdateSetRequest,
   Set,
+  PreviousPerformance,
 } from '../types/workout';
 
 // Exercises
@@ -166,6 +168,7 @@ export const createWorkout = async (
     user_id: '',
     template_id: data.template_id || null,
     template_name_snapshot: null,
+    workout_type: data.workout_type || 'lifting',
     workout_date: data.workout_date,
     started_at: data.started_at || now,
     completed_at: null,
@@ -241,9 +244,12 @@ export const addSet = async (
     exercise_id: data.exercise_id,
     exercise_name_snapshot: '', // Will be filled by backend
     set_number: data.set_number,
+    set_type: data.set_type || 'normal',
     weight: data.weight ?? null,
     reps: data.reps ?? null,
     rpe: data.rpe ?? null,
+    is_completed: false,
+    completed_at: null,
     created_at: now,
   };
 
@@ -285,10 +291,42 @@ export const addSet = async (
 export const updateSet = async (
   workoutId: string,
   setId: string,
-  data: { weight?: number; reps?: number; rpe?: number }
+  data: UpdateSetRequest
 ): Promise<Set> => {
-  const response = await api.put(`/workouts/${workoutId}/sets/${setId}`, data);
-  return response.data;
+  // Update IndexedDB first
+  const existingSet = await db.sets.get(setId);
+  if (existingSet) {
+    await db.sets.update(setId, data);
+  }
+
+  // Sync with server if online
+  if (navigator.onLine) {
+    try {
+      const response = await api.put(`/workouts/${workoutId}/sets/${setId}`, data);
+      const serverSet = response.data;
+      await db.sets.put(serverSet);
+      return serverSet;
+    } catch (error) {
+      console.error('Failed to update set on server:', error);
+      await addToSyncQueue({
+        method: 'PUT',
+        endpoint: `/workouts/${workoutId}/sets/${setId}`,
+        data,
+        entityType: 'set',
+        entityId: setId,
+      });
+      return { ...existingSet, ...data } as Set;
+    }
+  } else {
+    await addToSyncQueue({
+      method: 'PUT',
+      endpoint: `/workouts/${workoutId}/sets/${setId}`,
+      data,
+      entityType: 'set',
+      entityId: setId,
+    });
+    return { ...existingSet, ...data } as Set;
+  }
 };
 
 export const deleteSet = async (
@@ -296,4 +334,26 @@ export const deleteSet = async (
   setId: string
 ): Promise<void> => {
   await api.delete(`/workouts/${workoutId}/sets/${setId}`);
+};
+
+// Previous Performance
+export const getPreviousPerformance = async (
+  workoutId: string,
+  exerciseId: string
+): Promise<PreviousPerformance> => {
+  try {
+    const response = await api.get(
+      `/workouts/${workoutId}/exercises/${exerciseId}/previous`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch previous performance:', error);
+    // Return empty previous performance if API fails
+    return {
+      exercise_id: exerciseId,
+      has_previous: false,
+      previous_workout_date: null,
+      previous_sets: [],
+    };
+  }
 };

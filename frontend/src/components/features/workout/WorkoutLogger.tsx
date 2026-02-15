@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { Exercise } from '../../../types/workout';
+import React, { useState, useEffect } from 'react';
+import { Exercise, PreviousPerformance, PreviousSetData } from '../../../types/workout';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useRestTimer } from '../../../hooks/useRestTimer';
-import { completeWorkout, saveWorkoutAsTemplate } from '../../../services/workout.service';
+import {
+  completeWorkout,
+  saveWorkoutAsTemplate,
+  getPreviousPerformance,
+} from '../../../services/workout.service';
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetRow } from './SetRow';
 import { RestTimer } from './RestTimer';
@@ -21,6 +25,9 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [previousPerformance, setPreviousPerformance] = useState<
+    Record<string, PreviousPerformance>
+  >({});
 
   // Group sets by exercise
   const exerciseGroups = workout?.sets.reduce((acc, set) => {
@@ -38,8 +45,56 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
   const exercises = exerciseGroups ? Object.values(exerciseGroups) : [];
 
-  const handleAddExercise = (exercise: Exercise) => {
-    handleAddSet(exercise.id);
+  // Fetch previous performance for all exercises when workout loads
+  useEffect(() => {
+    const fetchPreviousPerformance = async () => {
+      if (!workout) return;
+
+      const exerciseIds = new Set(workout.sets.map((s) => s.exercise_id));
+
+      for (const exerciseId of exerciseIds) {
+        // Skip if already fetched
+        if (previousPerformance[exerciseId]) continue;
+
+        try {
+          const previous = await getPreviousPerformance(workout.id, exerciseId);
+          setPreviousPerformance((prev) => ({
+            ...prev,
+            [exerciseId]: previous,
+          }));
+        } catch (error) {
+          console.error('Failed to fetch previous performance:', error);
+        }
+      }
+    };
+
+    fetchPreviousPerformance();
+  }, [workout?.sets.length]); // Re-fetch when exercises are added
+
+  const getPreviousSetData = (exerciseId: string, setNumber: number): PreviousSetData | null => {
+    const previous = previousPerformance[exerciseId];
+    if (!previous || !previous.has_previous) return null;
+
+    // Find the matching set number, or return null
+    const matchingSet = previous.previous_sets.find((s) => s.set_number === setNumber);
+    return matchingSet || null;
+  };
+
+  const handleAddExercise = async (exercise: Exercise) => {
+    await handleAddSet(exercise.id);
+
+    // Fetch previous performance for newly added exercise
+    if (!previousPerformance[exercise.id]) {
+      try {
+        const previous = await getPreviousPerformance(workoutId, exercise.id);
+        setPreviousPerformance((prev) => ({
+          ...prev,
+          [exercise.id]: previous,
+        }));
+      } catch (error) {
+        console.error('Failed to fetch previous performance:', error);
+      }
+    }
   };
 
   const handleAddSet = async (exerciseId: string) => {
@@ -122,7 +177,9 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                     key={set.id}
                     set={set}
                     setNumber={index + 1}
+                    previousData={getPreviousSetData(group.exerciseId, index + 1)}
                     onUpdate={(data) => updateExistingSet(set.id, data)}
+                    onComplete={() => startTimer()}
                     onDelete={() => removeSet(set.id)}
                   />
                 ))}

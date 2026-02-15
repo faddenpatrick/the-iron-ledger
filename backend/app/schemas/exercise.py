@@ -1,8 +1,11 @@
 """Exercise and workout template schemas."""
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from uuid import UUID
 from datetime import datetime
+
+# Type alias
+WorkoutType = Literal['lifting', 'cardio']
 
 
 class ExerciseBase(BaseModel):
@@ -60,6 +63,7 @@ class TemplateExerciseResponse(TemplateExerciseBase):
 class WorkoutTemplateBase(BaseModel):
     """Base workout template schema."""
     name: str = Field(..., max_length=255)
+    workout_type: WorkoutType = 'lifting'
 
 
 class WorkoutTemplateCreate(WorkoutTemplateBase):
@@ -70,6 +74,7 @@ class WorkoutTemplateCreate(WorkoutTemplateBase):
 class WorkoutTemplateUpdate(BaseModel):
     """Update workout template request."""
     name: Optional[str] = Field(None, max_length=255)
+    workout_type: Optional[WorkoutType] = None
     exercises: Optional[List[TemplateExerciseCreate]] = None
 
 
@@ -77,6 +82,7 @@ class WorkoutTemplateResponse(WorkoutTemplateBase):
     """Workout template response."""
     id: UUID
     user_id: UUID
+    workout_type: WorkoutType
     created_at: datetime
     updated_at: datetime
     exercises: List[TemplateExerciseResponse] = []
@@ -89,6 +95,7 @@ class WorkoutTemplateListResponse(WorkoutTemplateBase):
     """Workout template list response (without exercises)."""
     id: UUID
     user_id: UUID
+    workout_type: WorkoutType
     created_at: datetime
     updated_at: datetime
 
