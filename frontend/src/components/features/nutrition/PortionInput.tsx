@@ -42,8 +42,8 @@ export const PortionInput: React.FC<PortionInputProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="w-full max-w-md bg-gray-800 rounded-lg p-6">
-        <h3 className="text-xl font-bold mb-2">{food.name}</h3>
-        <p className="text-sm text-gray-400 mb-6">{food.serving_size} per serving</p>
+        <h3 className="text-xl font-bold mb-2 break-words">{food.name}</h3>
+        <p className="text-sm text-gray-400 mb-6 break-words">{food.serving_size} per serving</p>
 
         {/* Servings Input */}
         <div className="mb-6">

@@ -97,16 +97,16 @@ export const MealLogger: React.FC<MealLoggerProps> = ({
               key={index}
               className="flex items-center justify-between p-3 bg-gray-700 rounded-lg"
             >
-              <div className="flex-1">
-                <div className="font-medium">{item.food.name}</div>
-                <div className="text-sm text-gray-400">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium break-words">{item.food.name}</div>
+                <div className="text-sm text-gray-400 break-words">
                   {item.servings} × {item.food.serving_size} -{' '}
                   {Math.round(item.food.calories * item.servings)} cal
                 </div>
               </div>
               <button
                 onClick={() => handleRemoveFood(index)}
-                className="ml-2 text-red-400 hover:text-red-300"
+                className="ml-2 text-red-400 hover:text-red-300 flex-shrink-0"
               >
                 ×
               </button>

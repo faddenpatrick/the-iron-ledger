@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Food } from '../../../types/nutrition';
 import { getFoods, createFood } from '../../../services/nutrition.service';
 import { BarcodeScanner } from './BarcodeScanner';
+import { ServingSizeInput } from './ServingSizeInput';
 import api from '../../../services/api';
 
 interface FoodSearchProps {
@@ -225,12 +226,10 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
                 <label className="block text-sm font-medium mb-1">
                   Serving Size <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <ServingSizeInput
                   value={customFood.serving_size}
-                  onChange={(e) => setCustomFood({ ...customFood, serving_size: e.target.value })}
-                  placeholder="e.g., 1 cup, 250g"
-                  className="input"
+                  onChange={(value) => setCustomFood({ ...customFood, serving_size: value })}
+                  placeholder="e.g., 100g, 4oz, 1 cup"
                 />
               </div>
 
@@ -310,8 +309,8 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
                   }}
                   className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                 >
-                  <div className="font-medium mb-1">{food.name}</div>
-                  <div className="text-sm text-gray-400">
+                  <div className="font-medium mb-1 break-words">{food.name}</div>
+                  <div className="text-sm text-gray-400 break-words">
                     {food.serving_size} - {food.calories} cal
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
