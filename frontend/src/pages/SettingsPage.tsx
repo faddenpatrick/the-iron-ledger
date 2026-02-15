@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { useSettings } from '../hooks/useSettings';
 import { clearAllData } from '../services/indexeddb.service';
+import {
+  percentageToGrams,
+  gramsToPercentage,
+  validatePercentageSum,
+} from '../utils/macroCalculations';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -19,6 +24,12 @@ export const SettingsPage: React.FC = () => {
   const [fat, setFat] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Macro mode state
+  const [macroMode, setMacroMode] = useState<'grams' | 'percentage'>('grams');
+  const [proteinPct, setProteinPct] = useState('');
+  const [carbsPct, setCarbsPct] = useState('');
+  const [fatPct, setFatPct] = useState('');
+
   // Initialize form from settings
   useEffect(() => {
     if (settings) {
@@ -28,6 +39,10 @@ export const SettingsPage: React.FC = () => {
       setProtein(settings.macro_target_protein?.toString() || '');
       setCarbs(settings.macro_target_carbs?.toString() || '');
       setFat(settings.macro_target_fat?.toString() || '');
+      setMacroMode(settings.macro_input_mode || 'grams');
+      setProteinPct(settings.macro_percentage_protein?.toString() || '');
+      setCarbsPct(settings.macro_percentage_carbs?.toString() || '');
+      setFatPct(settings.macro_percentage_fat?.toString() || '');
     }
   }, [settings]);
 
@@ -49,15 +64,46 @@ export const SettingsPage: React.FC = () => {
   const handleSaveMacros = async () => {
     setSaving(true);
     try {
-      await updateSettings({
-        macro_target_calories: calories ? parseInt(calories) : null,
-        macro_target_protein: protein ? parseInt(protein) : null,
-        macro_target_carbs: carbs ? parseInt(carbs) : null,
-        macro_target_fat: fat ? parseInt(fat) : null,
-      });
+      if (macroMode === 'percentage') {
+        // Validate percentages
+        const proteinVal = parseInt(proteinPct) || 0;
+        const carbsVal = parseInt(carbsPct) || 0;
+        const fatVal = parseInt(fatPct) || 0;
+        const caloriesVal = parseInt(calories) || 0;
+
+        if (!caloriesVal) {
+          alert('Calories must be set when using percentage mode');
+          setSaving(false);
+          return;
+        }
+
+        const validation = validatePercentageSum(proteinVal, carbsVal, fatVal);
+        if (!validation.isValid) {
+          alert(`Macro percentages must total 100% (currently ${validation.total}%)`);
+          setSaving(false);
+          return;
+        }
+
+        await updateSettings({
+          macro_input_mode: 'percentage',
+          macro_target_calories: caloriesVal,
+          macro_percentage_protein: proteinVal,
+          macro_percentage_carbs: carbsVal,
+          macro_percentage_fat: fatVal,
+        });
+      } else {
+        // Grams mode
+        await updateSettings({
+          macro_input_mode: 'grams',
+          macro_target_calories: calories ? parseInt(calories) : null,
+          macro_target_protein: protein ? parseInt(protein) : null,
+          macro_target_carbs: carbs ? parseInt(carbs) : null,
+          macro_target_fat: fat ? parseInt(fat) : null,
+        });
+      }
       alert('Macro targets saved!');
-    } catch (error) {
-      alert('Failed to save macro targets');
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Failed to save macro targets');
     } finally {
       setSaving(false);
     }
@@ -177,54 +223,185 @@ export const SettingsPage: React.FC = () => {
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">Daily Macro Targets</h3>
           <p className="text-sm text-gray-400 mb-4">
-            Set your daily nutrition goals. Leave blank to not track a specific macro.
+            Set your daily nutrition goals by grams or percentages.
           </p>
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Calories</label>
-              <input
-                type="number"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                placeholder="e.g., 2000"
-                className="input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Protein (g)</label>
-              <input
-                type="number"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value)}
-                placeholder="e.g., 150"
-                className="input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Carbs (g)</label>
-              <input
-                type="number"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value)}
-                placeholder="e.g., 200"
-                className="input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Fat (g)</label>
-              <input
-                type="number"
-                value={fat}
-                onChange={(e) => setFat(e.target.value)}
-                placeholder="e.g., 60"
-                className="input w-full"
-              />
+          {/* Mode Toggle */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Input Mode</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMacroMode('grams')}
+                className={`flex-1 py-2 px-4 rounded ${
+                  macroMode === 'grams'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-700 text-gray-300'
+                }`}
+              >
+                Grams
+              </button>
+              <button
+                onClick={() => setMacroMode('percentage')}
+                className={`flex-1 py-2 px-4 rounded ${
+                  macroMode === 'percentage'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-700 text-gray-300'
+                }`}
+              >
+                Percentage
+              </button>
             </div>
           </div>
+
+          {/* Calories Input (required for percentage mode) */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">
+              Calories {macroMode === 'percentage' && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type="number"
+              value={calories}
+              onChange={(e) => setCalories(e.target.value)}
+              placeholder="e.g., 2000"
+              className="input w-full"
+            />
+          </div>
+
+          {macroMode === 'percentage' ? (
+            <>
+              {/* Percentage Mode */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Protein (%)</label>
+                  <input
+                    type="number"
+                    value={proteinPct}
+                    onChange={(e) => setProteinPct(e.target.value)}
+                    placeholder="e.g., 40"
+                    min="0"
+                    max="100"
+                    className="input w-full"
+                  />
+                  {proteinPct && calories && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {percentageToGrams(parseInt(proteinPct), 'protein', parseInt(calories))}g
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Carbs (%)</label>
+                  <input
+                    type="number"
+                    value={carbsPct}
+                    onChange={(e) => setCarbsPct(e.target.value)}
+                    placeholder="e.g., 30"
+                    min="0"
+                    max="100"
+                    className="input w-full"
+                  />
+                  {carbsPct && calories && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {percentageToGrams(parseInt(carbsPct), 'carbs', parseInt(calories))}g
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fat (%)</label>
+                  <input
+                    type="number"
+                    value={fatPct}
+                    onChange={(e) => setFatPct(e.target.value)}
+                    placeholder="e.g., 30"
+                    min="0"
+                    max="100"
+                    className="input w-full"
+                  />
+                  {fatPct && calories && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {percentageToGrams(parseInt(fatPct), 'fat', parseInt(calories))}g
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Percentage Validation */}
+              {proteinPct && carbsPct && fatPct && (() => {
+                const validation = validatePercentageSum(
+                  parseInt(proteinPct) || 0,
+                  parseInt(carbsPct) || 0,
+                  parseInt(fatPct) || 0
+                );
+                return (
+                  <div className={`mt-3 p-2 rounded text-sm ${
+                    validation.isValid
+                      ? 'bg-green-900/30 text-green-400'
+                      : 'bg-red-900/30 text-red-400'
+                  }`}>
+                    {validation.isValid ? (
+                      <span>✓ Percentages total 100%</span>
+                    ) : (
+                      <span>⚠ Percentages must total 100% (currently {validation.total}%)</span>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <>
+              {/* Grams Mode */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={protein}
+                    onChange={(e) => setProtein(e.target.value)}
+                    placeholder="e.g., 150"
+                    className="input w-full"
+                  />
+                  {protein && calories && parseInt(calories) > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {gramsToPercentage(parseInt(protein), 'protein', parseInt(calories))}%
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={carbs}
+                    onChange={(e) => setCarbs(e.target.value)}
+                    placeholder="e.g., 200"
+                    className="input w-full"
+                  />
+                  {carbs && calories && parseInt(calories) > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {gramsToPercentage(parseInt(carbs), 'carbs', parseInt(calories))}%
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fat (g)</label>
+                  <input
+                    type="number"
+                    value={fat}
+                    onChange={(e) => setFat(e.target.value)}
+                    placeholder="e.g., 60"
+                    className="input w-full"
+                  />
+                  {fat && calories && parseInt(calories) > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      ≈ {gramsToPercentage(parseInt(fat), 'fat', parseInt(calories))}%
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           <button
             onClick={handleSaveMacros}

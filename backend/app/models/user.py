@@ -47,6 +47,12 @@ class UserSettings(Base):
     macro_target_carbs = Column(Integer, nullable=True)  # grams
     macro_target_fat = Column(Integer, nullable=True)  # grams
 
+    # Macro percentage mode
+    macro_input_mode = Column(String(20), default="grams", nullable=False)  # 'grams' or 'percentage'
+    macro_percentage_protein = Column(Integer, nullable=True)  # 0-100
+    macro_percentage_carbs = Column(Integer, nullable=True)  # 0-100
+    macro_percentage_fat = Column(Integer, nullable=True)  # 0-100
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

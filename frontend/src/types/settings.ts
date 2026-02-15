@@ -6,6 +6,10 @@ export interface UserSettings {
   macro_target_protein: number | null;
   macro_target_carbs: number | null;
   macro_target_fat: number | null;
+  macro_input_mode: 'grams' | 'percentage';
+  macro_percentage_protein: number | null;
+  macro_percentage_carbs: number | null;
+  macro_percentage_fat: number | null;
 }
 
 export interface UpdateUserSettingsRequest {
@@ -16,4 +20,8 @@ export interface UpdateUserSettingsRequest {
   macro_target_protein?: number | null;
   macro_target_carbs?: number | null;
   macro_target_fat?: number | null;
+  macro_input_mode?: 'grams' | 'percentage';
+  macro_percentage_protein?: number | null;
+  macro_percentage_carbs?: number | null;
+  macro_percentage_fat?: number | null;
 }
