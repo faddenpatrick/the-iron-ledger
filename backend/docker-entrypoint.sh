@@ -20,5 +20,15 @@ else
   echo "Exercises already seeded ($EXERCISE_COUNT found)"
 fi
 
+echo "Checking if foods are seeded..."
+FOOD_COUNT=$(PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -U "$DATABASE_USER" -d "$DATABASE_NAME" -t -c "SELECT COUNT(*) FROM foods WHERE is_custom = false;" 2>/dev/null | xargs)
+
+if [ "$FOOD_COUNT" = "0" ]; then
+  echo "Seeding foods..."
+  python scripts/seed_foods.py
+else
+  echo "Foods already seeded ($FOOD_COUNT found)"
+fi
+
 echo "Starting application..."
 exec "$@"
