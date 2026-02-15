@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Meal, MealItem } from '../../../types/nutrition';
+import { Meal } from '../../../types/nutrition';
 import { getMeal, deleteMealItem } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
 
