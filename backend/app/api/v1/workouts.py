@@ -225,8 +225,11 @@ def create_workout(
     template_name_snapshot = None
 
     # If using a template, verify it exists and snapshot the name
+    template = None
     if workout_data.template_id:
-        template = db.query(WorkoutTemplate).filter(
+        template = db.query(WorkoutTemplate).options(
+            joinedload(WorkoutTemplate.exercises).joinedload(TemplateExercise.exercise)
+        ).filter(
             WorkoutTemplate.id == workout_data.template_id,
             WorkoutTemplate.user_id == current_user.id,
             WorkoutTemplate.deleted_at.is_(None)
@@ -250,6 +253,31 @@ def create_workout(
         started_at=workout_data.started_at
     )
     db.add(workout)
+    db.flush()  # Get workout.id
+
+    # If using a template, create sets from template exercises
+    if template:
+        for template_exercise in template.exercises:
+            target_sets = template_exercise.target_sets or 3
+            target_reps = template_exercise.target_reps or 10
+            target_weight = template_exercise.target_weight or 0
+
+            # Create sets for this exercise
+            for set_num in range(1, target_sets + 1):
+                workout_set = Set(
+                    workout_id=workout.id,
+                    exercise_id=template_exercise.exercise_id,
+                    exercise_name_snapshot=template_exercise.exercise.name,
+                    set_number=set_num,
+                    set_type='normal',
+                    weight=target_weight if target_weight > 0 else None,
+                    reps=target_reps,
+                    rpe=None,
+                    is_completed=False,
+                    completed_at=None
+                )
+                db.add(workout_set)
+
     db.commit()
     db.refresh(workout)
 
