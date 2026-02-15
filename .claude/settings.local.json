@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(chmod:*)",
+      "Bash(ssh:*)",
+      "Bash(rsync:*)",
+      "Bash(curl:*)",
+      "Bash(scp:*)",
+      "Bash(test:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
