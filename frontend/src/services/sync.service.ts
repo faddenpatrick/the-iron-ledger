@@ -117,13 +117,13 @@ class SyncService {
 
     try {
       // Pull exercises
-      const exercisesRes = await api.get('/api/v1/exercises?limit=1000');
+      const exercisesRes = await api.get('/exercises?limit=1000');
       if (exercisesRes.data?.items) {
         await db.exercises.bulkPut(exercisesRes.data.items);
       }
 
       // Pull workout templates
-      const templatesRes = await api.get('/api/v1/workouts/templates');
+      const templatesRes = await api.get('/workouts/templates');
       if (templatesRes.data) {
         await db.workoutTemplates.bulkPut(templatesRes.data);
       }
@@ -132,20 +132,20 @@ class SyncService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const workoutsRes = await api.get(
-        `/api/v1/workouts?start_date=${thirtyDaysAgo.toISOString().split('T')[0]}`
+        `/workouts?start_date=${thirtyDaysAgo.toISOString().split('T')[0]}`
       );
       if (workoutsRes.data) {
         await db.workouts.bulkPut(workoutsRes.data);
       }
 
       // Pull meal categories
-      const categoriesRes = await api.get('/api/v1/nutrition/meal-categories');
+      const categoriesRes = await api.get('/nutrition/meal-categories');
       if (categoriesRes.data) {
         await db.mealCategories.bulkPut(categoriesRes.data);
       }
 
       // Pull foods
-      const foodsRes = await api.get('/api/v1/nutrition/foods?limit=1000');
+      const foodsRes = await api.get('/nutrition/foods?limit=1000');
       if (foodsRes.data?.items) {
         await db.foods.bulkPut(foodsRes.data.items);
       }
@@ -154,7 +154,7 @@ class SyncService {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const mealsRes = await api.get(
-        `/api/v1/nutrition/meals?date=${sevenDaysAgo.toISOString().split('T')[0]}`
+        `/nutrition/meals?date=${sevenDaysAgo.toISOString().split('T')[0]}`
       );
       if (mealsRes.data) {
         await db.meals.bulkPut(mealsRes.data);
