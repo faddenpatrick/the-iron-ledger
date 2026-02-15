@@ -26,8 +26,8 @@
 
 **1. Go to GitHub and create a new repository:**
    - Visit: https://github.com/new
-   - Repository name: `HealthApp` (or your preferred name)
-   - Description: `Offline-first PWA for tracking workouts and nutrition`
+   - Repository name: `the-iron-ledger`
+   - Description: `The Iron Ledger - Your personal workout and nutrition ledger. Offline-first PWA built with FastAPI, React, and Docker.`
    - Privacy: Choose Public or Private
    - **DO NOT** initialize with README, .gitignore, or license (we already have these)
    - Click "Create repository"
@@ -37,10 +37,10 @@
 cd /Users/patrickfadden/Documents/Projects/HealthApp
 
 # Add GitHub as remote (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/HealthApp.git
+git remote add origin https://github.com/YOUR_USERNAME/the-iron-ledger.git
 
 # Or use SSH (if you have SSH keys set up):
-# git remote add origin git@github.com:YOUR_USERNAME/HealthApp.git
+# git remote add origin git@github.com:YOUR_USERNAME/the-iron-ledger.git
 
 # Push your code
 git branch -M main

@@ -1,4 +1,4 @@
-# The Iron Ledge - Workout & Nutrition Tracker PWA
+# The Iron Ledger - Workout & Nutrition Tracker PWA
 
 **Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when you're offline.**
 
