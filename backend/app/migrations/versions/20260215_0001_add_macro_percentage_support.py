@@ -1,7 +1,7 @@
 """add macro percentage support
 
-Revision ID: 20260215_0001
-Revises: 20240214_0001
+Revision ID: 0002
+Revises: 0001
 Create Date: 2026-02-15
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '20260215_0001'
-down_revision = '20240214_0001'
+revision = '0002'
+down_revision = '0001'
 branch_labels = None
 depends_on = None
 
