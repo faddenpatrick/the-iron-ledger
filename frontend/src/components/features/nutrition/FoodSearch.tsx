@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Food } from '../../../types/nutrition';
 import { getFoods, createFood } from '../../../services/nutrition.service';
+import { BarcodeScanner } from './BarcodeScanner';
+import api from '../../../services/api';
 
 interface FoodSearchProps {
   onSelect: (food: Food) => void;
@@ -12,6 +14,8 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [searchSource, setSearchSource] = useState<'local' | 'openfoodfacts'>('local');
   const [customFood, setCustomFood] = useState({
     name: '',
     serving_size: '',
@@ -23,15 +27,81 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
 
   useEffect(() => {
     loadFoods();
-  }, [search]);
+  }, [search, searchSource]);
 
   const loadFoods = async () => {
     setLoading(true);
     try {
-      const data = await getFoods(search || undefined);
-      setFoods(data);
+      if (searchSource === 'local') {
+        // Search local database
+        const data = await getFoods(search || undefined);
+        setFoods(data);
+      } else {
+        // Search Open Food Facts
+        if (search.length >= 3) {
+          const response = await api.get('/openfoodfacts/search', {
+            params: { q: search, page_size: 50 }
+          });
+          // Convert Open Food Facts format to our Food format
+          const offFoods = response.data.products.map((p: any) => ({
+            id: p.barcode,
+            name: p.name,
+            serving_size: p.serving_size || '100g',
+            calories: p.calories,
+            protein: p.protein,
+            carbs: p.carbs,
+            fat: p.fat,
+            is_custom: false,
+            user_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            _source: 'openfoodfacts',
+            _barcode: p.barcode,
+          }));
+          setFoods(offFoods);
+        } else {
+          setFoods([]);
+        }
+      }
     } catch (error) {
       console.error('Failed to load foods:', error);
+      setFoods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    setShowBarcodeScanner(false);
+    setLoading(true);
+
+    try {
+      const response = await api.get(`/openfoodfacts/barcode/${barcode}`);
+      const product = response.data;
+
+      // Create a Food object from the barcode result
+      const food: any = {
+        id: product.barcode,
+        name: product.name,
+        serving_size: product.serving_size || '100g',
+        calories: product.calories,
+        protein: product.protein,
+        carbs: product.carbs,
+        fat: product.fat,
+        is_custom: false,
+        user_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        _source: 'openfoodfacts',
+        _barcode: product.barcode,
+      };
+
+      // Directly select the scanned food
+      onSelect(food);
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to lookup barcode:', error);
+      alert(error?.response?.data?.detail || 'Product not found in database. Try searching manually or create a custom food.');
     } finally {
       setLoading(false);
     }
@@ -81,23 +151,55 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
             </button>
           </div>
 
+          {/* Search Source Toggle */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => { setSearchSource('local'); setSearch(''); }}
+              className={`flex-1 py-2 px-3 rounded text-sm ${
+                searchSource === 'local'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-700 text-gray-300'
+              }`}
+            >
+              My Foods
+            </button>
+            <button
+              onClick={() => { setSearchSource('openfoodfacts'); setSearch(''); }}
+              className={`flex-1 py-2 px-3 rounded text-sm ${
+                searchSource === 'openfoodfacts'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-700 text-gray-300'
+              }`}
+            >
+              🌍 Open Food Facts
+            </button>
+          </div>
+
           {/* Search */}
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search foods..."
+            placeholder={searchSource === 'local' ? 'Search my foods...' : 'Search Open Food Facts...'}
             className="input"
             autoFocus
           />
 
-          {/* Create Custom Food Button */}
-          <button
-            onClick={() => setShowCustomForm(!showCustomForm)}
-            className="mt-3 w-full btn btn-secondary text-sm"
-          >
-            {showCustomForm ? '← Back to Search' : '+ Create Custom Food'}
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setShowBarcodeScanner(true)}
+              className="flex-1 btn btn-secondary text-sm"
+            >
+              📷 Scan Barcode
+            </button>
+            <button
+              onClick={() => setShowCustomForm(!showCustomForm)}
+              className="flex-1 btn btn-secondary text-sm"
+            >
+              {showCustomForm ? '← Back' : '+ Custom'}
+            </button>
+          </div>
         </div>
 
         {/* Food List or Custom Food Form */}
@@ -221,6 +323,14 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
           )}
         </div>
       </div>
+
+      {/* Barcode Scanner */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onScan={handleBarcodeScanned}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .api.v1 import auth, exercises, workouts, nutrition, settings as settings_router
+from .api.v1 import auth, exercises, workouts, nutrition, settings as settings_router, openfoodfacts
 
 # Create FastAPI app
 app = FastAPI(
@@ -25,6 +25,7 @@ app.include_router(exercises.router, prefix="/api/v1/exercises", tags=["Exercise
 app.include_router(workouts.router, prefix="/api/v1/workouts", tags=["Workouts"])
 app.include_router(nutrition.router, prefix="/api/v1/nutrition", tags=["Nutrition"])
 app.include_router(settings_router.router, prefix="/api/v1/user", tags=["User Settings"])
+app.include_router(openfoodfacts.router, prefix="/api/v1/openfoodfacts", tags=["Open Food Facts"])
 
 
 @app.get("/")
