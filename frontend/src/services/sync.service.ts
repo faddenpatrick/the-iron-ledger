@@ -117,9 +117,10 @@ class SyncService {
 
     try {
       // Pull exercises
-      const exercisesRes = await api.get('/exercises?limit=1000');
-      if (exercisesRes.data?.items) {
-        await db.exercises.bulkPut(exercisesRes.data.items);
+      const exercisesRes = await api.get('/exercises?limit=500');
+      if (exercisesRes.data) {
+        // Response is array of exercises, not paginated
+        await db.exercises.bulkPut(exercisesRes.data);
       }
 
       // Pull workout templates
@@ -145,7 +146,7 @@ class SyncService {
       }
 
       // Pull foods
-      const foodsRes = await api.get('/nutrition/foods?limit=1000');
+      const foodsRes = await api.get('/nutrition/foods?limit=500');
       if (foodsRes.data?.items) {
         await db.foods.bulkPut(foodsRes.data.items);
       }
