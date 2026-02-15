@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MealCategory } from '../../../types/nutrition';
-import { getMealCategories, createMealCategory } from '../../../services/nutrition.service';
+import { getMealCategories, createMealCategory, updateMealCategory, deleteMealCategory } from '../../../services/nutrition.service';
 
 interface CategorySelectorProps {
   selectedCategoryId: string | null;
@@ -15,6 +15,9 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [manageMode, setManageMode] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -56,6 +59,44 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     }
   };
 
+  const handleEditCategory = async (id: string) => {
+    if (!editName.trim()) return;
+
+    try {
+      await updateMealCategory(id, { name: editName });
+      setCategories(categories.map(cat =>
+        cat.id === id ? { ...cat, name: editName } : cat
+      ));
+      setEditingId(null);
+      setEditName('');
+    } catch (error: any) {
+      console.error('Failed to update category:', error);
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      alert(`Failed to update category: ${errorMsg}`);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!confirm(`Delete "${name}" category? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteMealCategory(id);
+      const updatedCategories = categories.filter(cat => cat.id !== id);
+      setCategories(updatedCategories);
+
+      // If deleted category was selected, select first remaining category
+      if (selectedCategoryId === id && updatedCategories.length > 0) {
+        onSelectCategory(updatedCategories[0].id);
+      }
+    } catch (error: any) {
+      console.error('Failed to delete category:', error);
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      alert(`Failed to delete category: ${errorMsg}`);
+    }
+  };
+
   if (loading) {
     return <div className="text-gray-400 text-sm">Loading categories...</div>;
   }
@@ -90,26 +131,87 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   return (
     <div>
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={() => setManageMode(!manageMode)}
+          className="text-xs text-gray-400 hover:text-white"
+        >
+          {manageMode ? '✓ Done' : '⚙ Manage'}
+        </button>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
         {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => onSelectCategory(category.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              selectedCategoryId === category.id
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            {category.name}
-          </button>
+          <div key={category.id} className="relative">
+            {editingId === category.id ? (
+              <div className="flex items-center gap-1 bg-gray-700 rounded-full px-2 py-1">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') handleEditCategory(category.id);
+                    if (e.key === 'Escape') { setEditingId(null); setEditName(''); }
+                  }}
+                  className="bg-transparent text-sm px-2 py-1 w-32 focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => handleEditCategory(category.id)}
+                  className="text-green-500 text-xs px-2"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => { setEditingId(null); setEditName(''); }}
+                  className="text-red-500 text-xs px-2"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => !manageMode && onSelectCategory(category.id)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    selectedCategoryId === category.id && !manageMode
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {category.name}
+                </button>
+                {manageMode && (
+                  <div className="absolute -top-2 -right-2 flex gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingId(category.id);
+                        setEditName(category.name);
+                      }}
+                      className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id, category.name)}
+                      className="w-6 h-6 rounded-full bg-red-600 text-white text-xs flex items-center justify-center"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         ))}
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gray-700 text-gray-300 hover:bg-gray-600"
-        >
-          + New
-        </button>
+        {!manageMode && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gray-700 text-gray-300 hover:bg-gray-600"
+          >
+            + New
+          </button>
+        )}
       </div>
 
       {showCreateModal && (
