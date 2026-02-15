@@ -289,16 +289,16 @@ def create_meal(
                 detail=f"Food {item_data.food_id} not found"
             )
 
-        # Create meal item with snapshots (calculate total for servings)
+        # Create meal item with snapshots (store per-serving values)
         meal_item = MealItem(
             meal_id=meal.id,
             food_id=item_data.food_id,
             servings=item_data.servings,
             food_name_snapshot=food.name,
-            calories_snapshot=int(food.calories * item_data.servings),
-            protein_snapshot=int(food.protein * item_data.servings),
-            carbs_snapshot=int(food.carbs * item_data.servings),
-            fat_snapshot=int(food.fat * item_data.servings),
+            calories_snapshot=food.calories,
+            protein_snapshot=food.protein,
+            carbs_snapshot=food.carbs,
+            fat_snapshot=food.fat,
         )
         db.add(meal_item)
 
@@ -493,12 +493,12 @@ def get_nutrition_summary(
         UserSettings.user_id == current_user.id
     ).first()
 
-    # Calculate totals from meal items for the date
+    # Calculate totals from meal items for the date (multiply by servings)
     totals = db.query(
-        func.sum(MealItem.calories_snapshot).label('total_calories'),
-        func.sum(MealItem.protein_snapshot).label('total_protein'),
-        func.sum(MealItem.carbs_snapshot).label('total_carbs'),
-        func.sum(MealItem.fat_snapshot).label('total_fat'),
+        func.sum(MealItem.calories_snapshot * MealItem.servings).label('total_calories'),
+        func.sum(MealItem.protein_snapshot * MealItem.servings).label('total_protein'),
+        func.sum(MealItem.carbs_snapshot * MealItem.servings).label('total_carbs'),
+        func.sum(MealItem.fat_snapshot * MealItem.servings).label('total_fat'),
     ).join(Meal).filter(
         Meal.user_id == current_user.id,
         Meal.meal_date == summary_date,
@@ -532,13 +532,13 @@ def get_weekly_average(
     """
     start_date = end_date - timedelta(days=6)  # 7 days total
 
-    # Query daily totals for each day in range
+    # Query daily totals for each day in range (multiply by servings)
     daily_totals = db.query(
         Meal.meal_date,
-        func.sum(MealItem.calories_snapshot).label('daily_calories'),
-        func.sum(MealItem.protein_snapshot).label('daily_protein'),
-        func.sum(MealItem.carbs_snapshot).label('daily_carbs'),
-        func.sum(MealItem.fat_snapshot).label('daily_fat'),
+        func.sum(MealItem.calories_snapshot * MealItem.servings).label('daily_calories'),
+        func.sum(MealItem.protein_snapshot * MealItem.servings).label('daily_protein'),
+        func.sum(MealItem.carbs_snapshot * MealItem.servings).label('daily_carbs'),
+        func.sum(MealItem.fat_snapshot * MealItem.servings).label('daily_fat'),
     ).join(MealItem).filter(
         Meal.user_id == current_user.id,
         Meal.meal_date >= start_date,
