@@ -108,16 +108,28 @@ export const createExercise = async (data: {
 };
 
 // Templates
-export const getTemplates = async (): Promise<WorkoutTemplateList[]> => {
+export const getTemplates = async (params?: {
+  workout_type?: string;
+}): Promise<WorkoutTemplateList[]> => {
   // IndexedDB first
-  const templates = await db.workoutTemplates.toArray();
+  let templates = await db.workoutTemplates.toArray();
+
+  // Apply workout_type filter if specified
+  if (params?.workout_type) {
+    templates = templates.filter((t) => t.workout_type === params.workout_type);
+  }
 
   // Background API update if online
   if (navigator.onLine) {
     try {
-      const response = await api.get('/workouts/templates');
+      const response = await api.get('/workouts/templates', { params });
       const apiTemplates = response.data;
       await db.workoutTemplates.bulkPut(apiTemplates);
+
+      // Re-apply filter to API results
+      if (params?.workout_type) {
+        return apiTemplates.filter((t: WorkoutTemplateList) => t.workout_type === params.workout_type);
+      }
       return apiTemplates;
     } catch (error) {
       console.error('Failed to fetch templates from API:', error);
@@ -147,6 +159,7 @@ export const deleteTemplate = async (id: string): Promise<void> => {
 export const getWorkouts = async (params?: {
   start_date?: string;
   end_date?: string;
+  workout_type?: string;
 }): Promise<WorkoutList[]> => {
   const response = await api.get('/workouts', { params });
   return response.data;

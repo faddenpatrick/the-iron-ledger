@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Header } from '../components/layout/Header';
 import { TemplateList } from '../components/features/workout/TemplateList';
 import { WorkoutLogger } from '../components/features/workout/WorkoutLogger';
+import { WorkoutHistory } from '../components/features/workout/WorkoutHistory';
 import { CardioPlaceholder } from '../components/features/workout/CardioPlaceholder';
 import { createWorkout } from '../services/workout.service';
 import { format } from 'date-fns';
@@ -126,6 +127,7 @@ export const WorkoutPage: React.FC = () => {
 
                 {/* Templates */}
                 <TemplateList
+                  workoutType={topTab}
                   onSelectTemplate={handleStartFromTemplate}
                   onCreateTemplate={() => {
                     alert('Template builder coming in next update!');
@@ -156,11 +158,13 @@ export const WorkoutPage: React.FC = () => {
             )}
 
             {activeTab === 'history' && (
-              <div className="card">
-                <p className="text-gray-400 text-center py-8">
-                  Workout history will be displayed here
-                </p>
-              </div>
+              <WorkoutHistory
+                workoutType={topTab}
+                onSelectWorkout={(id) => {
+                  setActiveWorkoutId(id);
+                  setActiveTab('active');
+                }}
+              />
             )}
           </>
         )}

@@ -5,11 +5,13 @@ import { getTemplates, deleteTemplate } from '../../../services/workout.service'
 interface TemplateListProps {
   onSelectTemplate: (templateId: string) => void;
   onCreateTemplate: () => void;
+  workoutType?: 'lifting' | 'cardio';
 }
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   onSelectTemplate,
   onCreateTemplate: _onCreateTemplate,
+  workoutType = 'lifting',
 }) => {
   const [templates, setTemplates] = useState<WorkoutTemplateList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,12 +19,12 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   useEffect(() => {
     loadTemplates();
-  }, []);
+  }, [workoutType]);
 
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const data = await getTemplates();
+      const data = await getTemplates({ workout_type: workoutType });
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);

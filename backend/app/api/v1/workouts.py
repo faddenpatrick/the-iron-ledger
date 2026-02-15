@@ -36,14 +36,21 @@ router = APIRouter()
 
 @router.get("/templates", response_model=List[WorkoutTemplateListResponse])
 def get_templates(
+    workout_type: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get user's workout templates."""
-    templates = db.query(WorkoutTemplate).filter(
+    """Get user's workout templates, optionally filtered by workout_type."""
+    query = db.query(WorkoutTemplate).filter(
         WorkoutTemplate.user_id == current_user.id,
         WorkoutTemplate.deleted_at.is_(None)
-    ).order_by(WorkoutTemplate.created_at.desc()).all()
+    )
+
+    # Apply workout_type filter if specified
+    if workout_type:
+        query = query.filter(WorkoutTemplate.workout_type == workout_type)
+
+    templates = query.order_by(WorkoutTemplate.created_at.desc()).all()
 
     return templates
 
@@ -253,12 +260,13 @@ def create_workout(
 def get_workouts(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    workout_type: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get user's workouts with optional date range filter."""
+    """Get user's workouts with optional date range and workout_type filters."""
     query = db.query(Workout).filter(
         Workout.user_id == current_user.id,
         Workout.deleted_at.is_(None)
@@ -269,6 +277,10 @@ def get_workouts(
         query = query.filter(Workout.workout_date >= start_date)
     if end_date:
         query = query.filter(Workout.workout_date <= end_date)
+
+    # Apply workout_type filter
+    if workout_type:
+        query = query.filter(Workout.workout_type == workout_type)
 
     workouts = query.order_by(Workout.workout_date.desc()).offset(skip).limit(limit).all()
 
