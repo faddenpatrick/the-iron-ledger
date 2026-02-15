@@ -390,6 +390,91 @@ def delete_meal(
     return None
 
 
+# ===== MEAL ITEMS =====
+
+@router.delete("/meal-items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meal_item(
+    item_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a meal item."""
+    # Verify the meal item belongs to the user
+    item = db.query(MealItem).join(Meal).filter(
+        MealItem.id == item_id,
+        Meal.user_id == current_user.id
+    ).first()
+
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal item not found"
+        )
+
+    db.delete(item)
+    db.commit()
+    return None
+
+
+@router.post("/meals/{meal_id}/copy", response_model=MealResponse)
+def copy_meal(
+    meal_id: UUID,
+    copy_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Copy a meal to a new date/time."""
+    # Get the original meal with items
+    original_meal = db.query(Meal).options(
+        joinedload(Meal.items)
+    ).filter(
+        Meal.id == meal_id,
+        Meal.user_id == current_user.id,
+        Meal.deleted_at.is_(None)
+    ).first()
+
+    if not original_meal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal not found"
+        )
+
+    # Create new meal with same category
+    new_meal = Meal(
+        user_id=current_user.id,
+        category_id=original_meal.category_id,
+        category_name_snapshot=original_meal.category_name_snapshot,
+        meal_date=copy_data.get('meal_date'),
+        meal_time=copy_data.get('meal_time')
+    )
+    db.add(new_meal)
+    db.flush()
+
+    # Copy all meal items
+    for item in original_meal.items:
+        new_item = MealItem(
+            meal_id=new_meal.id,
+            food_id=item.food_id,
+            food_name_snapshot=item.food_name_snapshot,
+            calories_snapshot=item.calories_snapshot,
+            protein_snapshot=item.protein_snapshot,
+            carbs_snapshot=item.carbs_snapshot,
+            fat_snapshot=item.fat_snapshot,
+            servings=item.servings
+        )
+        db.add(new_item)
+
+    db.commit()
+    db.refresh(new_meal)
+
+    # Load items for response
+    new_meal = db.query(Meal).options(
+        joinedload(Meal.items)
+    ).filter(Meal.id == new_meal.id).first()
+
+    return new_meal
+
+
 # ===== NUTRITION SUMMARY =====
 
 @router.get("/summary", response_model=NutritionSummaryResponse)
