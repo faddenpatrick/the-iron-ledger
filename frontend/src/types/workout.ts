@@ -18,6 +18,7 @@ export interface TemplateExercise {
   order_index: number;
   target_sets: number | null;
   target_reps: number | null;
+  target_weight: number | null;
   notes: string | null;
   exercise: Exercise;
 }
@@ -90,6 +91,7 @@ export interface CreateTemplateRequest {
     order_index: number;
     target_sets?: number;
     target_reps?: number;
+    target_weight?: number;
     notes?: string;
   }[];
 }

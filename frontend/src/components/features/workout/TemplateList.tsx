@@ -53,15 +53,13 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Create Template Button - Hidden for now, use "Save as Template" after workouts */}
-      {/*
+      {/* Create Template Button */}
       <button
-        onClick={onCreateTemplate}
+        onClick={_onCreateTemplate}
         className="w-full btn btn-primary py-4 text-lg"
       >
         + Create New Template
       </button>
-      */}
 
       {/* Templates */}
       {templates.length === 0 ? (

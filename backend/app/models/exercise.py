@@ -61,6 +61,7 @@ class TemplateExercise(Base):
     order_index = Column(Integer, nullable=False)  # Order in template
     target_sets = Column(Integer, nullable=True)
     target_reps = Column(Integer, nullable=True)
+    target_weight = Column(Integer, nullable=True)  # Target weight in lbs
     notes = Column(Text, nullable=True)
 
     # Relationships

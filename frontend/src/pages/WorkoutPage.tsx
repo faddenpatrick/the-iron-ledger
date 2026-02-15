@@ -4,6 +4,7 @@ import { TemplateList } from '../components/features/workout/TemplateList';
 import { WorkoutLogger } from '../components/features/workout/WorkoutLogger';
 import { WorkoutHistory } from '../components/features/workout/WorkoutHistory';
 import { CardioPlaceholder } from '../components/features/workout/CardioPlaceholder';
+import { TemplateBuilder } from '../components/features/workout/TemplateBuilder';
 import { createWorkout } from '../services/workout.service';
 import { format } from 'date-fns';
 import { WorkoutType } from '../types/workout';
@@ -15,6 +16,8 @@ export const WorkoutPage: React.FC = () => {
   const [topTab, setTopTab] = useState<TopTab>('lifting');
   const [activeTab, setActiveTab] = useState<SubTab>('templates');
   const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null);
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
+  const [refreshTemplates, setRefreshTemplates] = useState(0);
 
   const handleStartFromTemplate = async (templateId: string) => {
     try {
@@ -135,11 +138,10 @@ export const WorkoutPage: React.FC = () => {
 
                 {/* Templates */}
                 <TemplateList
+                  key={refreshTemplates}
                   workoutType={topTab}
                   onSelectTemplate={handleStartFromTemplate}
-                  onCreateTemplate={() => {
-                    alert('Template builder coming in next update!');
-                  }}
+                  onCreateTemplate={() => setShowTemplateBuilder(true)}
                 />
               </div>
             )}
@@ -175,6 +177,17 @@ export const WorkoutPage: React.FC = () => {
               />
             )}
           </>
+        )}
+
+        {/* Template Builder Modal */}
+        {showTemplateBuilder && (
+          <TemplateBuilder
+            onClose={() => setShowTemplateBuilder(false)}
+            onSuccess={() => {
+              setShowTemplateBuilder(false);
+              setRefreshTemplates(prev => prev + 1);
+            }}
+          />
         )}
       </div>
     </div>

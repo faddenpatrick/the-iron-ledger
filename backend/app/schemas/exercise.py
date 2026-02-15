@@ -43,6 +43,7 @@ class TemplateExerciseBase(BaseModel):
     order_index: int
     target_sets: Optional[int] = None
     target_reps: Optional[int] = None
+    target_weight: Optional[float] = None
     notes: Optional[str] = None
 
 

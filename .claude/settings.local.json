@@ -29,7 +29,8 @@
       "Bash(backend/scripts/__init__.py:*)",
       "Bash(backend/scripts/seed_exercises.py:*)",
       "Bash(frontend/src/components/features/workout/PRBadge.tsx:*)",
-      "Bash(/Users/patrickfadden/Documents/Projects/HealthApp/frontend/src/utils/uuid.ts:*)"
+      "Bash(/Users/patrickfadden/Documents/Projects/HealthApp/frontend/src/utils/uuid.ts:*)",
+      "Bash(/Users/patrickfadden/Documents/Projects/HealthApp/backend/app/migrations/versions/20260215_0003_add_target_weight.py:*)"
     ]
   }
 }
