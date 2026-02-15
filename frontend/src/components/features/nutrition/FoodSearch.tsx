@@ -138,8 +138,8 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-2xl bg-gray-800 rounded-t-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-0">
+      <div className="w-full max-w-2xl bg-gray-800 rounded-t-2xl max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between mb-4">
@@ -204,7 +204,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
         </div>
 
         {/* Food List or Custom Food Form */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2">
           {showCustomForm ? (
             /* Custom Food Form */
             <div className="space-y-4">
@@ -222,7 +222,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
                 />
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium mb-1">
                   Serving Size <span className="text-red-500">*</span>
                 </label>

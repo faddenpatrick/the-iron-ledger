@@ -92,7 +92,7 @@ export const ServingSizeInput: React.FC<ServingSizeInputProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 w-full">
       <input
         type="text"
         value={displayValue}
@@ -102,13 +102,13 @@ export const ServingSizeInput: React.FC<ServingSizeInputProps> = ({
       />
 
       {showUnitToggle && currentUnit && (
-        <div className="flex gap-2">
-          <span className="text-xs text-gray-400 self-center">Convert to:</span>
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-gray-400 whitespace-nowrap">Convert to:</span>
           {WEIGHT_UNITS.filter(u => u !== currentUnit).map((unit) => (
             <button
               key={unit}
               onClick={() => handleUnitToggle(unit)}
-              className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300"
+              className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg text-gray-300 flex-shrink-0"
             >
               {unit}
             </button>
