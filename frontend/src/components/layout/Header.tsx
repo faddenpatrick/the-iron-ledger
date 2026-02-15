@@ -9,9 +9,19 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
   const { isOnline, syncStatus } = useSync();
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700 px-4 py-4 sticky top-0 z-10">
+    <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 sticky top-0 z-10">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <h1 className="text-xl font-bold text-white">{title}</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src="/assets/logo.png"
+            alt="The Iron Ledger"
+            className="h-10 w-10 object-contain"
+          />
+          <div>
+            <h1 className="text-lg font-bold text-white leading-tight">{title}</h1>
+            <p className="text-xs text-brand-gold font-medium">The Iron Ledger</p>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {/* Offline/Sync indicators */}
           {!isOnline && (

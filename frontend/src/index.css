@@ -31,9 +31,13 @@
 }
 
 @layer utilities {
-  /* Iron gradient text effect */
+  /* Brand gradient text effect */
   .text-gradient-iron {
     @apply bg-gradient-to-r from-gray-400 via-gray-200 to-gray-400 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-primary-400 via-primary-300 to-primary-400 bg-clip-text text-transparent;
   }
 
   /* Metallic card style */
@@ -41,8 +45,28 @@
     @apply bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700;
   }
 
+  .card-brand {
+    @apply bg-gradient-to-br from-gray-800 to-brand-iron border border-primary-600/30;
+  }
+
   /* Metal texture overlay (subtle) */
   .metal-texture {
     background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

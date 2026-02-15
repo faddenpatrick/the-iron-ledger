@@ -32,11 +32,19 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gradient-iron mb-2">The Iron Ledger</h1>
-          <p className="text-gray-400">Track strength. Build consistency.</p>
+          <div className="flex justify-center mb-6">
+            <img
+              src="/assets/logo.png"
+              alt="The Iron Ledger"
+              className="h-32 w-32 object-contain animate-fade-in"
+            />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">The Iron Ledger</h1>
+          <p className="text-brand-gold font-medium mb-1">Balance Your Fitness Journey</p>
+          <p className="text-gray-400 text-sm">Track strength. Monitor nutrition. Build consistency.</p>
         </div>
 
         <div className="card">

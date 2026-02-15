@@ -8,17 +8,25 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Brand colors from The Iron Ledger logo
         primary: {
-          50: '#f8fafc',   // Light steel
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',  // Medium steel
-          500: '#64748b',  // Steel gray
-          600: '#475569',  // Dark steel
-          700: '#334155',  // Gunmetal
-          800: '#1e293b',  // Dark gunmetal
-          900: '#0f172a',  // Iron black
+          50: '#faf8f4',   // Very light gold
+          100: '#f5f0e6',
+          200: '#ebe0cc',
+          300: '#d9c7a3',
+          400: '#c9a961',  // Logo gold/brass
+          500: '#b8954d',  // Medium gold
+          600: '#9a7c3f',  // Dark gold
+          700: '#7d6432',  // Deep gold
+          800: '#5f4d26',  // Bronze
+          900: '#3a2f18',  // Dark bronze
+        },
+        brand: {
+          gold: '#c9a961',    // Scale/brass color
+          iron: '#3a3a3a',    // Dark metallic background
+          slate: '#4a4a4a',   // Medium metallic
+          green: '#7cb342',   // Vegetable green
+          check: '#e8e8e8',   // Checkmark color
         },
         // Macro-specific accent colors
         steel: {
