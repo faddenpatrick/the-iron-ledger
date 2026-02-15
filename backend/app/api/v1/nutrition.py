@@ -16,6 +16,8 @@ from ...schemas.nutrition import (
     FoodCreate,
     FoodUpdate,
     FoodResponse,
+    MealItemCreate,
+    MealItemResponse,
     MealCreate,
     MealResponse,
     MealListResponse,
