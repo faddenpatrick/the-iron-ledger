@@ -50,10 +50,11 @@ async def get_product_by_barcode(barcode: str):
                 serving_size = "100g"
 
             # Extract macros (Open Food Facts stores per 100g)
-            calories = int(nutriments.get("energy-kcal_100g", 0) or 0)
-            protein = int(nutriments.get("proteins_100g", 0) or 0)
-            carbs = int(nutriments.get("carbohydrates_100g", 0) or 0)
-            fat = int(nutriments.get("fat_100g", 0) or 0)
+            # Convert to float first to handle decimal strings, then to int
+            calories = int(float(nutriments.get("energy-kcal_100g", 0) or 0))
+            protein = int(float(nutriments.get("proteins_100g", 0) or 0))
+            carbs = int(float(nutriments.get("carbohydrates_100g", 0) or 0))
+            fat = int(float(nutriments.get("fat_100g", 0) or 0))
 
             # Build product name
             name = product.get("product_name", "Unknown Product")
@@ -113,10 +114,11 @@ async def search_products(
                     serving_size = "100g"
 
                 # Extract macros (per 100g)
-                calories = int(nutriments.get("energy-kcal_100g", 0) or 0)
-                protein = int(nutriments.get("proteins_100g", 0) or 0)
-                carbs = int(nutriments.get("carbohydrates_100g", 0) or 0)
-                fat = int(nutriments.get("fat_100g", 0) or 0)
+                # Convert to float first to handle decimal strings, then to int
+                calories = int(float(nutriments.get("energy-kcal_100g", 0) or 0))
+                protein = int(float(nutriments.get("proteins_100g", 0) or 0))
+                carbs = int(float(nutriments.get("carbohydrates_100g", 0) or 0))
+                fat = int(float(nutriments.get("fat_100g", 0) or 0))
 
                 # Build product name
                 name = product.get("product_name", "Unknown Product")
