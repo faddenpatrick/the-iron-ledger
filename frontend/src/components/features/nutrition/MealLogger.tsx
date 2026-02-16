@@ -63,14 +63,37 @@ export const MealLogger: React.FC<MealLoggerProps> = ({
 
     setLogging(true);
     try {
+      // First, save any OpenFoodFacts foods to the database
+      const processedItems = await Promise.all(
+        foodItems.map(async (item) => {
+          let foodId = item.food.id;
+
+          // Check if this is an OpenFoodFacts food that needs to be saved
+          if ((item.food as any)._source === 'openfoodfacts') {
+            // Save to database first
+            const savedFood = await createFood({
+              name: item.food.name,
+              serving_size: item.food.serving_size,
+              calories: item.food.calories,
+              protein: item.food.protein,
+              carbs: item.food.carbs,
+              fat: item.food.fat,
+            });
+            foodId = savedFood.id;
+          }
+
+          return {
+            food_id: foodId,
+            servings: item.servings,
+          };
+        })
+      );
+
       await createMeal({
         category_id: categoryId,
         meal_date: format(date, 'yyyy-MM-dd'),
         meal_time: new Date().toISOString(),
-        items: foodItems.map((item) => ({
-          food_id: item.food.id,
-          servings: item.servings,
-        })),
+        items: processedItems,
       });
 
       setFoodItems([]);

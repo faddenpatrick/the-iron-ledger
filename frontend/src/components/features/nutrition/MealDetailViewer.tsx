@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Meal, Food } from '../../../types/nutrition';
-import { getMeal, deleteMealItem, addMealItem } from '../../../services/nutrition.service';
+import { getMeal, deleteMealItem, addMealItem, createFood } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
 import { FoodSearch } from './FoodSearch';
 import { PortionInput } from './PortionInput';
@@ -64,7 +64,23 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
 
     setAddingItem(true);
     try {
-      await addMealItem(meal.id, selectedFood.id, servings);
+      let foodId = selectedFood.id;
+
+      // Check if this is an OpenFoodFacts food that needs to be saved
+      if ((selectedFood as any)._source === 'openfoodfacts') {
+        // Save to database first
+        const savedFood = await createFood({
+          name: selectedFood.name,
+          serving_size: selectedFood.serving_size,
+          calories: selectedFood.calories,
+          protein: selectedFood.protein,
+          carbs: selectedFood.carbs,
+          fat: selectedFood.fat,
+        });
+        foodId = savedFood.id;
+      }
+
+      await addMealItem(meal.id, foodId, servings);
       // Reload the meal to get updated items
       await loadMeal();
       setSelectedFood(null);
