@@ -15,6 +15,11 @@ export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings, loading, updateSettings } = useSettings();
 
+  // PWA Install state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+
   // Form state
   const [units, setUnits] = useState<'lbs' | 'kg'>('lbs');
   const [restTimer, setRestTimer] = useState(90);
@@ -29,6 +34,37 @@ export const SettingsPage: React.FC = () => {
   const [proteinPct, setProteinPct] = useState('');
   const [carbsPct, setCarbsPct] = useState('');
   const [fatPct, setFatPct] = useState('');
+
+  // Capture PWA install prompt
+  useEffect(() => {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return;
+    }
+
+    // Listen for install prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    // Listen for app installed
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   // Initialize form from settings
   useEffect(() => {
@@ -109,6 +145,29 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert('Installation prompt not available. Try refreshing the page.');
+      return;
+    }
+
+    // Show the install prompt
+    deferredPrompt.prompt();
+
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+    } else {
+      console.log('User dismissed the install prompt');
+    }
+
+    // Clear the prompt as it can only be used once
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
+
   const handleLogout = async () => {
     if (confirm('Are you sure you want to logout? This will clear all offline data.')) {
       await clearAllData();
@@ -146,6 +205,47 @@ export const SettingsPage: React.FC = () => {
             Logout
           </button>
         </div>
+
+        {/* PWA Install */}
+        {!isInstalled && (
+          <div className="card">
+            <h3 className="text-lg font-semibold mb-2">Install App</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              {isInstallable
+                ? 'Install The Iron Ledger as a standalone app on your device for the best experience.'
+                : 'The app can be installed once it\'s ready. Try refreshing the page if you don\'t see the install button.'}
+            </p>
+            {isInstallable ? (
+              <button
+                onClick={handleInstallClick}
+                className="btn btn-primary w-full"
+              >
+                📱 Install App
+              </button>
+            ) : (
+              <div className="p-3 bg-gray-700 rounded-lg text-sm text-gray-400">
+                <p className="mb-2">
+                  <strong>Benefits of installing:</strong>
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Works offline with all your data</li>
+                  <li>No browser UI - looks like a native app</li>
+                  <li>App shortcuts for quick access</li>
+                  <li>Faster loading and better performance</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isInstalled && (
+          <div className="card">
+            <h3 className="text-lg font-semibold mb-2">✓ App Installed</h3>
+            <p className="text-sm text-gray-400">
+              The Iron Ledger is installed as a standalone app on your device.
+            </p>
+          </div>
+        )}
 
         {/* Preferences */}
         <div className="card">
