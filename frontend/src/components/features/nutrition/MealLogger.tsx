@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Food } from '../../../types/nutrition';
-import { createMeal } from '../../../services/nutrition.service';
+import { createMeal, createFood } from '../../../services/nutrition.service';
 import { FoodSearch } from './FoodSearch';
 import { PortionInput } from './PortionInput';
 import { format } from 'date-fns';
