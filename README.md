@@ -23,16 +23,18 @@ A self-hosted Progressive Web App for tracking workouts and nutrition with compl
 - **Alembic** - Database migrations
 - **JWT** - Token-based authentication
 
-### Frontend (Phases 5-8 to be completed)
+### Frontend
 - **React 18** + **TypeScript** - UI framework
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Utility-first styling
 - **React Router** - Client-side routing
 - **Axios** - HTTP client with JWT interceptors
+- **Dexie** - IndexedDB wrapper for offline storage
+- **vite-plugin-pwa** - Progressive Web App with service worker
 
 ### Deployment
 - **Docker** + **Docker Compose** - Containerization
-- **Nginx** - Reverse proxy (to be added)
+- **Nginx** - Frontend reverse proxy (built into frontend container)
 
 ## 📦 Project Structure
 
@@ -192,7 +194,16 @@ The frontend will be available at: `http://localhost:5173`
 - `GET /api/v1/nutrition/meals` - List meals (with date filters)
 - `GET /api/v1/nutrition/meals/{id}` - Get meal details
 - `DELETE /api/v1/nutrition/meals/{id}` - Delete meal
+- `POST /api/v1/nutrition/meals/{id}/items` - Add item to existing meal
+- `POST /api/v1/nutrition/meals/{id}/copy` - Copy meal to new date/time
+- `PATCH /api/v1/nutrition/meal-items/{id}` - Update meal item servings
+- `DELETE /api/v1/nutrition/meal-items/{id}` - Delete meal item
 - `GET /api/v1/nutrition/summary?summary_date=YYYY-MM-DD` - Daily nutrition summary
+- `GET /api/v1/nutrition/weekly-average?end_date=YYYY-MM-DD` - 7-day running average
+
+### OpenFoodFacts Integration
+- `GET /api/v1/openfoodfacts/search?q={query}` - Search external food database
+- `GET /api/v1/openfoodfacts/barcode/{barcode}` - Lookup food by barcode
 
 ## 🗄️ Database Schema
 
@@ -220,109 +231,42 @@ Historical data integrity is preserved through snapshots:
 
 This ensures workout and nutrition history remains accurate even if templates, exercises, categories, or foods are renamed or deleted.
 
-## 🚢 Deployment to Remote Server
+## 🚢 Deployment
 
-### SSH into Server
+The app runs on a Linux server (ilobster) at `192.168.1.44` using Docker Compose.
+
+### Deploy Updates
 
 ```bash
+# From local machine: commit and push
+git add . && git commit -m "your message" && git push
+
+# SSH into server and deploy
 ssh patrick@192.168.1.44
+cd ~/the-iron-ledger
+git pull
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-### Transfer Files
+### Access
 
-From your local machine:
-
-```bash
-# Option 1: Using rsync
-rsync -avz --exclude 'node_modules' --exclude '__pycache__' --exclude '.git' \
-  /Users/patrickfadden/Documents/Projects/HealthApp/ \
-  patrick@192.168.1.44:~/HealthApp/
-
-# Option 2: Using scp
-scp -r HealthApp patrick@192.168.1.44:~/
-```
-
-### On Server
-
-```bash
-cd HealthApp
-
-# Configure environment
-cp .env.example .env
-nano .env  # Update SECRET_KEY, DATABASE_URL, CORS_ORIGINS
-
-# Start PostgreSQL
-docker-compose up -d postgres
-
-# Set up backend
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-python scripts/seed_exercises.py
-
-# Run backend (use screen/tmux for persistent session)
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# In another terminal, set up frontend
-cd frontend
-npm install
-npm run build
-
-# Serve frontend (temporary - will add Nginx in Phase 9)
-npm run preview -- --host 0.0.0.0 --port 5173
-```
-
-### Access via Tailscale
-
-Once running on server:
-- Backend API: `http://[tailscale-ip]:8000`
-- Frontend: `http://[tailscale-ip]:5173`
-- API Docs: `http://[tailscale-ip]:8000/docs`
+- Frontend: `http://192.168.1.44`
+- Backend API: `http://192.168.1.44:8000`
+- API Docs: `http://192.168.1.44:8000/docs`
 
 ## ✅ Implementation Status
 
-### Completed Phases (1-4)
-
-- ✅ **Phase 1**: Database & Backend Core
-  - PostgreSQL with 11 tables
-  - Alembic migrations
-  - SQLAlchemy models with snapshot fields
-  - JWT authentication
-  - 100+ home gym exercises seeded
-
-- ✅ **Phase 2**: Workout Backend API
-  - Exercise CRUD with search
-  - Workout template management
-  - Workout session logging
-  - Set tracking with snapshots
-  - Save freestyle as template
-
-- ✅ **Phase 3**: Nutrition Backend API
-  - Meal category management
-  - Food database CRUD
-  - Meal logging with items
-  - Macro snapshot calculations
-  - Daily nutrition summary
-
-- ✅ **Phase 4**: React Frontend Foundation
-  - Vite + React + TypeScript setup
-  - Tailwind CSS with dark mode
-  - JWT authentication flow
-  - Protected routing
-  - Login/Register pages
-  - Basic Dashboard, Workout, Nutrition, Settings pages
-  - Bottom navigation
-
-### Remaining Phases (5-10)
-
-- ⏳ **Phase 5**: Workout Tracking Frontend UI
-- ⏳ **Phase 6**: Nutrition Tracking Frontend UI
-- ⏳ **Phase 7**: PWA & Offline Support (IndexedDB, Service Worker, Sync)
-- ⏳ **Phase 8**: Dashboard & Settings (Macro targets, preferences)
-- ⏳ **Phase 9**: Docker & Deployment (Nginx, production builds)
-- ⏳ **Phase 10**: Testing & Documentation
+- ✅ **Phase 1**: Database & Backend Core — PostgreSQL, Alembic, JWT auth, 100+ exercises seeded
+- ✅ **Phase 2**: Workout Backend API — Exercise CRUD, templates, session logging, set tracking with snapshots
+- ✅ **Phase 3**: Nutrition Backend API — Meal categories, food database, meal logging, macro snapshots, daily/weekly summaries
+- ✅ **Phase 4**: React Frontend Foundation — Vite + React + TypeScript, Tailwind, JWT auth flow, routing
+- ✅ **Phase 5**: Workout Tracking Frontend UI — Exercise selector, template builder, workout logger, set rows, rest timer
+- ✅ **Phase 6**: Nutrition Tracking Frontend UI — Meal logger, food search, OpenFoodFacts integration, barcode scanning, portion input, macro summaries, tap-to-edit servings
+- ✅ **Phase 7**: PWA & Offline Support — IndexedDB with Dexie, service worker, offline-first data access
+- ✅ **Phase 8**: Dashboard & Settings — Macro targets, unit preferences, PWA install prompt
+- ✅ **Phase 9**: Docker & Deployment — Multi-container Docker Compose (PostgreSQL, FastAPI, React/Nginx), auto-migrations on startup
 
 ## 🧪 Testing
 
@@ -362,38 +306,34 @@ SELECT id, email, created_at FROM users;
 
 ## 🔧 Troubleshooting
 
-### Backend won't start
-- Check PostgreSQL is running: `docker-compose ps`
-- Verify database connection in `.env`
-- Check migrations are applied: `alembic current`
+### Containers won't start
+- Check status: `docker compose -f docker-compose.prod.yml ps`
+- View logs: `docker compose -f docker-compose.prod.yml logs -f`
+- Rebuild: `docker compose -f docker-compose.prod.yml build --no-cache`
 
 ### Frontend can't connect to API
-- Verify `VITE_API_URL` in `frontend/.env`
-- Check CORS_ORIGINS in `backend/.env` includes frontend URL
-- Ensure backend is running on port 8000
+- Verify `VITE_API_URL` in `.env` matches the backend address
+- Check CORS_ORIGINS in `.env` includes the frontend URL
+- Backend logs: `docker compose -f docker-compose.prod.yml logs backend`
 
-### Database connection errors
-- Restart PostgreSQL: `docker-compose restart postgres`
-- Check port 5432 is not in use: `lsof -i :5432`
+### Database issues
+- Shell into DB: `docker compose -f docker-compose.prod.yml exec db psql -U healthapp_user -d healthapp`
+- Migrations run automatically on backend container startup via `docker-entrypoint.sh`
 
 ## 📝 Notes
 
 - Default theme: Dark mode
-- Default units: lbs (can be changed in settings - Phase 8)
+- Default units: lbs (configurable in Settings)
 - Default rest timer: 90 seconds
 - All timestamps stored in UTC
 - Soft deletes for sync reconciliation
 
-## 🎯 Next Steps
+## 🎯 Future Work
 
-To complete the application:
-
-1. **Implement Phase 5** - Workout UI with exercise selection, set logging, rest timer
-2. **Implement Phase 6** - Nutrition UI with meal category selection, food search, macro display
-3. **Implement Phase 7** - PWA with offline support using IndexedDB and Service Workers
-4. **Implement Phase 8** - Dashboard with today's summary and Settings with macro targets
-5. **Implement Phase 9** - Production Docker setup with Nginx reverse proxy
-6. **Implement Phase 10** - Tests and complete documentation
+- Jellyfin integration for media streaming
+- Automated testing (backend + frontend)
+- HTTPS via Tailscale Serve or reverse proxy
+- Nextcloud integration for file sync
 
 ## 📄 License
 
