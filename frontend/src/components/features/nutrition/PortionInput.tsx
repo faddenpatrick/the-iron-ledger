@@ -5,14 +5,18 @@ interface PortionInputProps {
   food: Food;
   onAdd: (servings: number) => void;
   onCancel: () => void;
+  initialServings?: number;
+  buttonLabel?: string;
 }
 
 export const PortionInput: React.FC<PortionInputProps> = ({
   food,
   onAdd,
   onCancel,
+  initialServings = 1,
+  buttonLabel = 'Add to Meal',
 }) => {
-  const [servings, setServings] = useState('1');
+  const [servings, setServings] = useState(initialServings.toString());
 
   const servingsNum = parseFloat(servings) || 0;
 
@@ -99,7 +103,7 @@ export const PortionInput: React.FC<PortionInputProps> = ({
             className="flex-1 btn btn-primary"
             disabled={servingsNum <= 0}
           >
-            Add to Meal
+            {buttonLabel}
           </button>
           <button onClick={onCancel} className="flex-1 btn btn-secondary">
             Cancel

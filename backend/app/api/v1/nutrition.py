@@ -17,6 +17,7 @@ from ...schemas.nutrition import (
     FoodUpdate,
     FoodResponse,
     MealItemCreate,
+    MealItemUpdate,
     MealItemResponse,
     MealCreate,
     MealResponse,
@@ -416,6 +417,31 @@ def delete_meal_item(
     db.delete(item)
     db.commit()
     return None
+
+
+@router.patch("/meal-items/{item_id}", response_model=MealItemResponse)
+def update_meal_item(
+    item_id: UUID,
+    item_data: MealItemUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update servings on a meal item."""
+    item = db.query(MealItem).join(Meal).filter(
+        MealItem.id == item_id,
+        Meal.user_id == current_user.id
+    ).first()
+
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal item not found"
+        )
+
+    item.servings = item_data.servings
+    db.commit()
+    db.refresh(item)
+    return item
 
 
 @router.post("/meals/{meal_id}/items", response_model=MealItemResponse)

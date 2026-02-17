@@ -233,6 +233,13 @@ export const deleteMealItem = async (id: string): Promise<void> => {
   await api.delete(`/nutrition/meal-items/${id}`);
 };
 
+export const updateMealItemServings = async (
+  itemId: string,
+  servings: number
+): Promise<void> => {
+  await api.patch(`/nutrition/meal-items/${itemId}`, { servings });
+};
+
 export const addMealItem = async (
   mealId: string,
   foodId: string,

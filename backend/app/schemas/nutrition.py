@@ -81,6 +81,11 @@ class MealItemCreate(MealItemBase):
     pass
 
 
+class MealItemUpdate(BaseModel):
+    """Update meal item request (servings only)."""
+    servings: float = Field(..., gt=0)
+
+
 class MealItemResponse(MealItemBase):
     """Meal item response."""
     id: UUID

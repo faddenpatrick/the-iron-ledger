@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Meal, Food } from '../../../types/nutrition';
-import { getMeal, deleteMealItem, addMealItem, createFood } from '../../../services/nutrition.service';
+import { Meal, MealItem as MealItemType, Food } from '../../../types/nutrition';
+import { getMeal, deleteMealItem, addMealItem, createFood, updateMealItemServings } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
 import { FoodSearch } from './FoodSearch';
 import { PortionInput } from './PortionInput';
@@ -23,6 +23,7 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
   const [showPortionInput, setShowPortionInput] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [addingItem, setAddingItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<MealItemType | null>(null);
 
   useEffect(() => {
     loadMeal();
@@ -91,6 +92,20 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
       alert('Failed to add item');
     } finally {
       setAddingItem(false);
+    }
+  };
+
+  const handleEditServings = async (servings: number) => {
+    if (!editingItem) return;
+
+    try {
+      await updateMealItemServings(editingItem.id, servings);
+      await loadMeal();
+      setEditingItem(null);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update servings:', error);
+      alert('Failed to update servings');
     }
   };
 
@@ -190,10 +205,13 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
                   </div>
                 ) : (
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <button
+                      className="flex-1 text-left"
+                      onClick={() => setEditingItem(item)}
+                    >
                       <h4 className="font-medium">{item.food_name_snapshot}</h4>
                       <p className="text-sm text-gray-400 mt-1">
-                        {item.servings} serving{item.servings !== 1 ? 's' : ''}
+                        {item.servings} serving{item.servings !== 1 ? 's' : ''} · tap to edit
                       </p>
                       <div className="flex gap-4 mt-2 text-sm">
                         <span className="text-blue-400">
@@ -209,7 +227,7 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
                           F: {Math.round(item.fat_snapshot * item.servings)}g
                         </span>
                       </div>
-                    </div>
+                    </button>
                     <button
                       onClick={() => setDeletingItemId(item.id)}
                       className="px-3 py-1 text-red-400 hover:text-red-300"
@@ -257,6 +275,28 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
             setShowPortionInput(false);
             setSelectedFood(null);
           }}
+        />
+      )}
+
+      {editingItem && (
+        <PortionInput
+          food={{
+            id: editingItem.food_id,
+            name: editingItem.food_name_snapshot,
+            serving_size: '',
+            calories: editingItem.calories_snapshot,
+            protein: editingItem.protein_snapshot,
+            carbs: editingItem.carbs_snapshot,
+            fat: editingItem.fat_snapshot,
+            is_custom: false,
+            user_id: null,
+            created_at: '',
+            updated_at: '',
+          }}
+          initialServings={editingItem.servings}
+          buttonLabel="Update Servings"
+          onAdd={handleEditServings}
+          onCancel={() => setEditingItem(null)}
         />
       )}
     </div>
