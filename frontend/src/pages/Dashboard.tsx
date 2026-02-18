@@ -83,12 +83,12 @@ export const Dashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => navigate('/workout')}
-            className="btn btn-primary py-6 flex flex-col items-center gap-2"
+            className="btn btn-primary py-3 flex items-center justify-center gap-2"
           >
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -100,9 +100,9 @@ export const Dashboard: React.FC = () => {
           </button>
           <button
             onClick={() => navigate('/nutrition')}
-            className="btn btn-secondary py-6 flex flex-col items-center gap-2"
+            className="btn btn-secondary py-3 flex items-center justify-center gap-2"
           >
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
