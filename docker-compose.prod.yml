@@ -102,6 +102,7 @@ services:
       - /home/patrick/.docker/config.json:/config.json:ro
     command: --scope healthapp
     environment:
+      DOCKER_API_VERSION: "1.44"
       WATCHTOWER_POLL_INTERVAL: 300
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_INCLUDE_STOPPED: "false"
