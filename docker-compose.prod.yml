@@ -24,11 +24,14 @@ services:
 
   # FastAPI Backend
   backend:
+    image: ghcr.io/faddenpatrick/the-iron-ledger/backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: healthapp_backend
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.scope=healthapp"
     environment:
       # Database
       DATABASE_HOST: db
@@ -66,6 +69,7 @@ services:
 
   # React Frontend
   frontend:
+    image: ghcr.io/faddenpatrick/the-iron-ledger/frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -73,6 +77,8 @@ services:
         VITE_API_URL: ${VITE_API_URL:-http://192.168.1.44:8000}
     container_name: healthapp_frontend
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.scope=healthapp"
     ports:
       - "80:80"
     networks:
@@ -85,6 +91,22 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+
+  # Watchtower - auto-updates containers when new images are pushed to GHCR
+  watchtower:
+    image: containrrr/watchtower
+    container_name: healthapp_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/patrick/.docker/config.json:/config.json:ro
+    command: --scope healthapp
+    environment:
+      WATCHTOWER_POLL_INTERVAL: 300
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_STOPPED: "false"
+    networks:
+      - healthapp_network
 
   # Nginx Reverse Proxy (Optional - for production with domain)
   nginx:
