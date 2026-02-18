@@ -48,7 +48,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           build-args: |
-            VITE_API_URL=http://192.168.1.44:8000
+            VITE_API_URL=https://ilobster.tail8d808.ts.net:8000
           tags: |
             ${{ env.IMAGE_PREFIX }}/frontend:latest
             ${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}

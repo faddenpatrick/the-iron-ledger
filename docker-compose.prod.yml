@@ -52,7 +52,7 @@ services:
       DEBUG: ${DEBUG:-False}
 
       # CORS
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://localhost:80","http://192.168.1.44","http://192.168.1.44:80"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://localhost:80","http://192.168.1.44","http://192.168.1.44:80","https://ilobster.tail8d808.ts.net:8082","https://ilobster.tail8d808.ts.net:8000","https://ilobster.tail8d808.ts.net"]}
     depends_on:
       db:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
     networks:
       - healthapp_network
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -74,7 +74,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://192.168.1.44:8000}
+        VITE_API_URL: ${VITE_API_URL:-https://ilobster.tail8d808.ts.net:8000}
     container_name: healthapp_frontend
     restart: unless-stopped
     labels:
