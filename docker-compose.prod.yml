@@ -57,7 +57,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "192.168.1.44:8000:8000"
     networks:
       - healthapp_network
     healthcheck:
