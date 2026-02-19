@@ -8,10 +8,19 @@ interface BarcodeScannerProps {
 
 export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isRunningRef = useRef(false); // use a ref so cleanup always sees the latest value
   const [error, setError] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false); // controls whether the div is in the DOM
   const [manualBarcode, setManualBarcode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
+
+  // Start the scanner only after the barcode-reader div has been mounted
+  useEffect(() => {
+    if (scannerVisible) {
+      startScanner();
+    }
+  }, [scannerVisible]);
 
   useEffect(() => {
     return () => {
@@ -37,21 +46,24 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           stopScanner();
         },
         (_errorMessage) => {
-          // Scanning error (ignore, happens frequently)
+          // Per-frame scanning errors — ignore, they happen constantly
         }
       );
 
+      isRunningRef.current = true;
       setIsScanning(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to start scanner:', err);
-      let errorMsg = 'Failed to access camera.';
+      isRunningRef.current = false;
+      setScannerVisible(false);
 
-      if (err?.message?.includes('Permission denied')) {
+      let errorMsg = 'Failed to access camera.';
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('Permission denied') || message.includes('NotAllowedError')) {
         errorMsg = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
-      } else if (err?.message?.includes('NotFoundError')) {
+      } else if (message.includes('NotFoundError')) {
         errorMsg = 'No camera found on this device.';
-      } else if (err?.message?.includes('NotAllowedError')) {
-        errorMsg = 'Camera access blocked. Check your browser permissions.';
       }
 
       setError(errorMsg);
@@ -59,13 +71,16 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
   };
 
   const stopScanner = async () => {
-    if (scannerRef.current && isScanning) {
+    if (scannerRef.current && isRunningRef.current) {
       try {
         await scannerRef.current.stop();
         scannerRef.current.clear();
-        setIsScanning(false);
       } catch (err) {
         console.error('Error stopping scanner:', err);
+      } finally {
+        isRunningRef.current = false;
+        setIsScanning(false);
+        setScannerVisible(false);
       }
     }
   };
@@ -95,13 +110,13 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           </button>
         </div>
 
-        {!isScanning && !showManualInput && (
+        {!isScanning && !scannerVisible && !showManualInput && (
           <div className="bg-gray-800 rounded-lg p-6 mb-4">
             <p className="text-gray-300 text-sm mb-4 text-center">
               Click below to start camera and scan a barcode
             </p>
             <button
-              onClick={startScanner}
+              onClick={() => setScannerVisible(true)}
               className="btn btn-primary w-full mb-3"
             >
               📷 Start Camera
@@ -137,7 +152,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           </div>
         )}
 
-        {isScanning && (
+        {/* scannerVisible mounts the div so Html5Qrcode can find it before initializing */}
+        {scannerVisible && (
           <div className="bg-gray-800 rounded-lg p-4 mb-4">
             <p className="text-gray-300 text-sm mb-4 text-center">
               Position the barcode within the frame
