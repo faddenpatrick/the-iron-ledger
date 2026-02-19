@@ -83,7 +83,7 @@ export const Dashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Quick Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center">
           <button
             onClick={() => navigate('/workout')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-primary-400 hover:text-primary-300 text-sm transition-colors"
