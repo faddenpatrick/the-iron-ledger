@@ -115,7 +115,7 @@ export const WorkoutPage: React.FC = () => {
   ];
 
   const subTabs = [
-    { id: 'templates' as SubTab, label: 'Templates', icon: '📋' },
+    { id: 'templates' as SubTab, label: 'Routines', icon: '📋' },
     { id: 'active' as SubTab, label: 'Active', icon: '💪' },
     { id: 'history' as SubTab, label: 'History', icon: '📊' },
   ];

@@ -152,6 +152,14 @@ export const createTemplate = async (
   return response.data;
 };
 
+export const updateTemplate = async (
+  id: string,
+  data: { name: string }
+): Promise<WorkoutTemplate> => {
+  const response = await api.put(`/workouts/templates/${id}`, data);
+  return response.data;
+};
+
 export const deleteTemplate = async (id: string): Promise<void> => {
   await api.delete(`/workouts/templates/${id}`);
 };

@@ -80,7 +80,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   const handleSave = async () => {
     if (!templateName.trim()) {
-      alert('Please enter a template name');
+      alert('Please enter a routine name');
       return;
     }
 
@@ -106,8 +106,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
       onSuccess();
     } catch (error) {
-      console.error('Failed to create template:', error);
-      alert('Failed to create template');
+      console.error('Failed to create routine:', error);
+      alert('Failed to create routine');
     } finally {
       setSaving(false);
     }
@@ -117,7 +117,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
       <div className="w-full max-w-2xl bg-gray-800 rounded-lg p-6 my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Create Template</h2>
+          <h2 className="text-2xl font-bold">Create Routine</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl"
@@ -129,7 +129,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         {/* Template Name */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-2">
-            Template Name
+            Routine Name
           </label>
           <input
             type="text"
@@ -278,7 +278,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             disabled={saving || !templateName || exercises.length === 0}
             className="flex-1 btn btn-primary"
           >
-            {saving ? 'Saving...' : 'Create Template'}
+            {saving ? 'Saving...' : 'Create Routine'}
           </button>
           <button onClick={onClose} className="flex-1 btn btn-secondary">
             Cancel

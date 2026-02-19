@@ -185,10 +185,10 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       await saveWorkoutAsTemplate(workout.id, templateName);
       setShowSaveTemplate(false);
       setTemplateName('');
-      alert('Template saved successfully!');
+      alert('Routine saved successfully!');
     } catch (error) {
-      console.error('Failed to save template:', error);
-      alert('Failed to save template');
+      console.error('Failed to save routine:', error);
+      alert('Failed to save routine');
     }
   };
 
@@ -300,7 +300,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
             onClick={() => setShowSaveTemplate(true)}
             className="w-full btn btn-secondary"
           >
-            Save as Template
+            Save as Routine
           </button>
         )}
         <button
@@ -329,12 +329,12 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       {showSaveTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="w-full max-w-md bg-gray-800 rounded-lg p-6">
-            <h3 className="text-xl font-bold mb-4">Save as Template</h3>
+            <h3 className="text-xl font-bold mb-4">Save as Routine</h3>
             <input
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Template name"
+              placeholder="Routine name"
               className="input mb-4"
               autoFocus
             />

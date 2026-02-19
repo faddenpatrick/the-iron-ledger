@@ -339,7 +339,7 @@ export const Dashboard: React.FC = () => {
                 <ul className="space-y-2 text-sm text-gray-300 ml-4">
                   <li className="flex items-start">
                     <span className="mr-2">⚡</span>
-                    <span>Logging your first workout or creating a template</span>
+                    <span>Logging your first workout or creating a routine</span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">⚖</span>
