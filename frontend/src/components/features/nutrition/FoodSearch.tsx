@@ -16,7 +16,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
   const [loading, setLoading] = useState(true);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [searchSource, setSearchSource] = useState<'local' | 'openfoodfacts'>('local');
+  const [includeOFF, setIncludeOFF] = useState(false);
   const [customFood, setCustomFood] = useState({
     name: '',
     serving_size: '',
@@ -28,22 +28,18 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
 
   useEffect(() => {
     loadFoods();
-  }, [search, searchSource]);
+  }, [search, includeOFF]);
 
   const loadFoods = async () => {
     setLoading(true);
     try {
-      if (searchSource === 'local') {
-        // Search local database
-        const data = await getFoods(search || undefined);
-        setFoods(data);
-      } else {
-        // Search Open Food Facts
-        if (search.length >= 3) {
+      const localData = await getFoods(search || undefined);
+
+      if (includeOFF && search.length >= 3) {
+        try {
           const response = await api.get('/openfoodfacts/search', {
-            params: { q: search, page_size: 50 }
+            params: { q: search, page_size: 20 },
           });
-          // Convert Open Food Facts format to our Food format
           const offFoods = response.data.products.map((p: any) => ({
             id: p.barcode,
             name: p.name,
@@ -59,10 +55,13 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
             _source: 'openfoodfacts',
             _barcode: p.barcode,
           }));
-          setFoods(offFoods);
-        } else {
-          setFoods([]);
+          setFoods([...localData, ...offFoods]);
+        } catch {
+          // If OFF search fails, fall back to local results only
+          setFoods(localData);
         }
+      } else {
+        setFoods(localData);
       }
     } catch (error) {
       console.error('Failed to load foods:', error);
@@ -80,7 +79,6 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
       const response = await api.get(`/openfoodfacts/barcode/${barcode}`);
       const product = response.data;
 
-      // Create a Food object from the barcode result
       const food: any = {
         id: product.barcode,
         name: product.name,
@@ -97,7 +95,6 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
         _barcode: product.barcode,
       };
 
-      // Directly select the scanned food
       onSelect(food);
       onClose();
     } catch (error: any) {
@@ -109,7 +106,6 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
   };
 
   const handleCreateCustomFood = async () => {
-    // Validate all required fields
     if (!customFood.name.trim()) {
       alert('Please enter a food name');
       return;
@@ -137,12 +133,14 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
     }
   };
 
+  const offCharsNeeded = Math.max(0, 3 - search.length);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-0">
       <div className="w-full max-w-2xl bg-gray-800 rounded-t-2xl max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold">Select Food</h2>
             <button
               onClick={onClose}
@@ -152,42 +150,40 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
             </button>
           </div>
 
-          {/* Search Source Toggle */}
-          <div className="flex gap-2 mb-3">
+          {/* Search + Open Food Facts toggle */}
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search foods..."
+              className="input flex-1"
+              autoFocus
+            />
             <button
-              onClick={() => { setSearchSource('local'); setSearch(''); }}
-              className={`flex-1 py-2 px-3 rounded text-sm ${
-                searchSource === 'local'
+              onClick={() => setIncludeOFF(!includeOFF)}
+              className={`px-3 py-2 rounded text-lg transition-colors ${
+                includeOFF
                   ? 'bg-primary-600 text-white'
-                  : 'bg-gray-700 text-gray-300'
+                  : 'bg-gray-700 text-gray-400 hover:text-white'
               }`}
+              title={includeOFF ? 'Open Food Facts: ON — click to disable' : 'Open Food Facts: OFF — click to enable'}
             >
-              My Foods
-            </button>
-            <button
-              onClick={() => { setSearchSource('openfoodfacts'); setSearch(''); }}
-              className={`flex-1 py-2 px-3 rounded text-sm ${
-                searchSource === 'openfoodfacts'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-700 text-gray-300'
-              }`}
-            >
-              🌍 Open Food Facts
+              🌍
             </button>
           </div>
 
-          {/* Search */}
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={searchSource === 'local' ? 'Search my foods...' : 'Search Open Food Facts...'}
-            className="input"
-            autoFocus
-          />
+          {/* Open Food Facts status hint */}
+          {includeOFF && (
+            <p className="text-xs text-primary-400 mb-2">
+              {offCharsNeeded > 0
+                ? `Type ${offCharsNeeded} more character${offCharsNeeded === 1 ? '' : 's'} to search Open Food Facts`
+                : 'Searching your foods + Open Food Facts'}
+            </p>
+          )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-2">
             <button
               onClick={() => setShowBarcodeScanner(true)}
               className="flex-1 btn btn-secondary text-sm"
@@ -297,27 +293,41 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
             ) : foods.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
                 <p>No foods found</p>
-                <p className="text-sm mt-2">Try creating a custom food instead</p>
+                {!includeOFF ? (
+                  <p className="text-sm mt-2">
+                    Tap <span className="text-primary-400">🌍</span> to also search Open Food Facts
+                  </p>
+                ) : (
+                  <p className="text-sm mt-2">Try creating a custom food instead</p>
+                )}
               </div>
             ) : (
-              foods.map((food) => (
-                <button
-                  key={food.id}
-                  onClick={() => {
-                    onSelect(food);
-                    onClose();
-                  }}
-                  className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                  <div className="font-medium mb-1 break-words">{food.name}</div>
-                  <div className="text-sm text-gray-400 break-words">
-                    {food.serving_size} - {food.calories} cal
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
-                  </div>
-                </button>
-              ))
+              foods.map((food) => {
+                const isOFF = (food as any)._source === 'openfoodfacts';
+                return (
+                  <button
+                    key={food.id}
+                    onClick={() => {
+                      onSelect(food);
+                      onClose();
+                    }}
+                    className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-medium mb-1 break-words flex-1">{food.name}</div>
+                      {isOFF && (
+                        <span className="text-xs text-blue-400 shrink-0 mt-0.5">🌍</span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-400 break-words">
+                      {food.serving_size} · {food.calories} cal
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      P: {food.protein}g · C: {food.carbs}g · F: {food.fat}g
+                    </div>
+                  </button>
+                );
+              })
             )
           )}
         </div>
