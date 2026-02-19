@@ -13,6 +13,7 @@ export const Dashboard: React.FC = () => {
   const [todayMeals, setTodayMeals] = useState<MealList[]>([]);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasActiveWorkout, setHasActiveWorkout] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -26,6 +27,11 @@ export const Dashboard: React.FC = () => {
         end_date: today,
       });
       setTodayWorkouts(workouts);
+
+      // Check for active (incomplete) workout
+      const activeId = localStorage.getItem('activeWorkoutId');
+      const hasIncomplete = workouts.some((w) => w.completed_at === null);
+      setHasActiveWorkout(!!activeId || hasIncomplete);
 
       // Fetch today's meals
       const meals = await getMeals(today);
@@ -103,6 +109,25 @@ export const Dashboard: React.FC = () => {
             Log Meal
           </button>
         </div>
+
+        {/* Resume Active Workout Banner */}
+        {hasActiveWorkout && (
+          <button
+            onClick={() => navigate('/workout')}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-primary-600/20 border border-primary-500/30 hover:bg-primary-600/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💪</span>
+              <div className="text-left">
+                <div className="font-semibold text-primary-300">Workout in Progress</div>
+                <div className="text-sm text-gray-400">Tap to resume where you left off</div>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
 
         {loading ? (
           <div className="card text-center py-8">

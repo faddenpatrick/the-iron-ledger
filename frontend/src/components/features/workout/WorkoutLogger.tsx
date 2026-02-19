@@ -23,11 +23,13 @@ const calculate1RM = (weight: number, reps: number): number => {
 interface WorkoutLoggerProps {
   workoutId: string;
   onComplete: () => void;
+  onCancel?: () => void;
 }
 
 export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   workoutId,
   onComplete,
+  onCancel,
 }) => {
   const { workout, loading, addNewSet, updateExistingSet, removeSet } = useWorkout(workoutId);
   const restTimer = useRestTimer(60);
@@ -199,7 +201,11 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
     try {
       await deleteWorkout(workout.id);
-      onComplete();
+      if (onCancel) {
+        onCancel();
+      } else {
+        onComplete();
+      }
     } catch (error) {
       console.error('Failed to cancel workout:', error);
       alert('Failed to cancel workout');

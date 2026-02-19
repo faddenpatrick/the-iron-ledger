@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
 import { TemplateList } from '../components/features/workout/TemplateList';
 import { WorkoutLogger } from '../components/features/workout/WorkoutLogger';
@@ -6,9 +6,11 @@ import { WorkoutHistory } from '../components/features/workout/WorkoutHistory';
 import { WorkoutViewer } from '../components/features/workout/WorkoutViewer';
 import { CardioPlaceholder } from '../components/features/workout/CardioPlaceholder';
 import { TemplateBuilder } from '../components/features/workout/TemplateBuilder';
-import { createWorkout } from '../services/workout.service';
+import { createWorkout, getWorkouts } from '../services/workout.service';
 import { format } from 'date-fns';
 import { WorkoutType } from '../types/workout';
+
+const ACTIVE_WORKOUT_KEY = 'activeWorkoutId';
 
 type TopTab = WorkoutType;
 type SubTab = 'templates' | 'active' | 'history';
@@ -20,6 +22,35 @@ export const WorkoutPage: React.FC = () => {
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [refreshTemplates, setRefreshTemplates] = useState(0);
+
+  // Restore active workout on mount
+  useEffect(() => {
+    const restoreActiveWorkout = async () => {
+      // 1. Quick check: localStorage
+      const savedId = localStorage.getItem(ACTIVE_WORKOUT_KEY);
+      if (savedId) {
+        setActiveWorkoutId(savedId);
+        setActiveTab('active');
+        return;
+      }
+
+      // 2. Fallback: check for any incomplete workout from today
+      try {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const workouts = await getWorkouts({ start_date: today, end_date: today });
+        const incomplete = workouts.find((w) => w.completed_at === null);
+        if (incomplete) {
+          localStorage.setItem(ACTIVE_WORKOUT_KEY, incomplete.id);
+          setActiveWorkoutId(incomplete.id);
+          setActiveTab('active');
+        }
+      } catch (error) {
+        console.error('Failed to check for active workout:', error);
+      }
+    };
+
+    restoreActiveWorkout();
+  }, []);
 
   const handleStartFromTemplate = async (templateId: string) => {
     try {
@@ -34,6 +65,7 @@ export const WorkoutPage: React.FC = () => {
       });
 
       console.log('Workout created successfully:', workout);
+      localStorage.setItem(ACTIVE_WORKOUT_KEY, workout.id);
       setActiveWorkoutId(workout.id);
       setActiveTab('active');
     } catch (error: any) {
@@ -55,6 +87,7 @@ export const WorkoutPage: React.FC = () => {
       });
 
       console.log('Workout created successfully:', workout);
+      localStorage.setItem(ACTIVE_WORKOUT_KEY, workout.id);
       setActiveWorkoutId(workout.id);
       setActiveTab('active');
     } catch (error: any) {
@@ -65,6 +98,13 @@ export const WorkoutPage: React.FC = () => {
   };
 
   const handleCompleteWorkout = () => {
+    localStorage.removeItem(ACTIVE_WORKOUT_KEY);
+    setActiveWorkoutId(null);
+    setActiveTab('templates');
+  };
+
+  const handleCancelWorkout = () => {
+    localStorage.removeItem(ACTIVE_WORKOUT_KEY);
     setActiveWorkoutId(null);
     setActiveTab('templates');
   };
@@ -154,6 +194,7 @@ export const WorkoutPage: React.FC = () => {
                   <WorkoutLogger
                     workoutId={activeWorkoutId}
                     onComplete={handleCompleteWorkout}
+                    onCancel={handleCancelWorkout}
                   />
                 ) : (
                   <div className="card text-center py-8">
