@@ -9,23 +9,26 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
   const { isOnline, syncStatus } = useSync();
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 sticky top-0 z-10">
+    <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/60 px-4 py-3 sticky top-0 z-10 shadow-lg shadow-black/30">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
           <img
             src="/assets/logo.png"
             alt="The Iron Ledger"
-            className="h-10 w-10 object-contain"
+            className="h-11 w-11 object-contain rounded-lg"
           />
           <div>
-            <h1 className="text-lg font-bold text-white leading-tight">{title}</h1>
-            <p className="text-xs text-brand-gold font-medium">The Iron Ledger</p>
+            <h1 className="text-lg font-bold text-white leading-tight font-display tracking-wide">
+              {title}
+            </h1>
+            <p className="text-xs font-display font-semibold tracking-widest uppercase text-brand-gold">
+              The Iron Ledger
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Offline/Sync indicators */}
           {!isOnline && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-900/30 border border-yellow-500/30 rounded text-xs text-yellow-400">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-900/30 border border-yellow-500/30 rounded-full text-xs text-yellow-400 font-medium">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -37,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             </div>
           )}
           {syncStatus.isSyncing && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-blue-900/30 border border-blue-500/30 rounded text-xs text-blue-400">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-900/30 border border-blue-500/30 rounded-full text-xs text-blue-400 font-medium">
               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle
                   className="opacity-25"
@@ -57,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             </div>
           )}
           {syncStatus.pendingCount > 0 && !syncStatus.isSyncing && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-orange-900/30 border border-orange-500/30 rounded text-xs text-orange-400">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-900/30 border border-orange-500/30 rounded-full text-xs text-orange-400 font-medium">
               <span>{syncStatus.pendingCount} pending</span>
             </div>
           )}
