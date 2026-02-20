@@ -4,12 +4,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
+        id: 'https://ilobster.tail8d808.ts.net:8082/iron-ledger',
         name: 'The Iron Ledger - Workout & Nutrition Tracker',
         short_name: 'Iron Ledger',
         description: 'Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when offline.',
@@ -18,7 +22,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/',
+        start_url: '/?source=pwa',
         icons: [
           {
             src: '/icon-192x192.png',

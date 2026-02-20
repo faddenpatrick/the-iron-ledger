@@ -1,11 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
-import { format } from 'date-fns';
+import { format, getDayOfYear } from 'date-fns';
 import { getWorkouts } from '../services/workout.service';
 import { getMeals, getNutritionSummary } from '../services/nutrition.service';
 import { WorkoutList } from '../types/workout';
 import { MealList, NutritionSummary } from '../types/nutrition';
+
+const MOTIVATIONAL_QUOTES = [
+  { text: "The last three or four reps is what makes the muscle grow. This area of pain divides a champion from someone who is not a champion.", author: "Arnold Schwarzenegger" },
+  { text: "Everybody wants to be a bodybuilder, but don't nobody want to lift no heavy ass weights.", author: "Ronnie Coleman" },
+  { text: "I still believe that if it's not growing, it's dying. So I'm going to keep growing.", author: "CT Fletcher" },
+  { text: "Success isn't always about greatness. It's about consistency. Consistent hard work leads to success.", author: "Dwayne Johnson" },
+  { text: "I hated every minute of training, but I said, don't quit. Suffer now and live the rest of your life as a champion.", author: "Muhammad Ali" },
+  { text: "The only place where success comes before work is in the dictionary.", author: "Vince Lombardi" },
+  { text: "The resistance that you fight physically in the gym and the resistance that you fight in life can only build a strong character.", author: "Arnold Schwarzenegger" },
+  { text: "If something stands between you and your success, move it. Never be denied.", author: "Dwayne Johnson" },
+  { text: "What hurts today makes you stronger tomorrow.", author: "Jay Cutler" },
+  { text: "The pain you feel today will be the strength you feel tomorrow.", author: "Arnold Schwarzenegger" },
+  { text: "Ain't nothin' to it but to do it.", author: "Ronnie Coleman" },
+  { text: "No citizen has a right to be an amateur in the matter of physical training. It is a shame for one to grow old without seeing the beauty and strength of which their body is capable.", author: "Socrates" },
+  { text: "The iron never lies to you. Two hundred pounds is always two hundred pounds.", author: "Henry Rollins" },
+  { text: "Discipline is doing what you hate to do, but doing it like you love it.", author: "Mike Tyson" },
+  { text: "Your body can stand almost anything. It's your mind that you have to convince.", author: "Andrew Murphy" },
+  { text: "The clock is ticking. Are you becoming the person you want to be?", author: "Greg Plitt" },
+  { text: "There are no shortcuts. Everything is reps, reps, reps.", author: "Arnold Schwarzenegger" },
+  { text: "When you hit failure, your workout has just begun.", author: "Ronnie Coleman" },
+  { text: "To be number one, you have to train like you're number two.", author: "Maurice Greene" },
+  { text: "I don't count my sit-ups. I only start counting when it starts hurting because they're the only ones that count.", author: "Muhammad Ali" },
+  { text: "Some people want it to happen, some wish it would happen, others make it happen.", author: "Michael Jordan" },
+  { text: "The successful warrior is the average man, with laser-like focus.", author: "Bruce Lee" },
+  { text: "Strength does not come from the physical capacity. It comes from an indomitable will.", author: "Mahatma Gandhi" },
+  { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+  { text: "It's supposed to be hard. If it were easy, everybody would do it.", author: "Tom Hanks" },
+  { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+  { text: "Take care of your body. It's the only place you have to live.", author: "Jim Rohn" },
+  { text: "Once you learn to quit, it becomes a habit.", author: "Vince Lombardi" },
+  { text: "Light weight, baby!", author: "Ronnie Coleman" },
+  { text: "The mind is the most important part. The mind is your most powerful muscle.", author: "Kai Greene" },
+  { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+];
+
+const getDailyQuote = () => {
+  const dayIndex = getDayOfYear(new Date());
+  return MOTIVATIONAL_QUOTES[dayIndex % MOTIVATIONAL_QUOTES.length];
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -258,42 +298,19 @@ export const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Today's Workouts */}
-            <div className="card">
-              <h3 className="text-lg font-semibold mb-3">Today's Workouts</h3>
-              {todayWorkouts.length > 0 ? (
-                <div className="space-y-2">
-                  {todayWorkouts.map((workout) => (
-                    <div
-                      key={workout.id}
-                      className="p-3 bg-gray-700 rounded-lg"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium">
-                            {workout.template_name_snapshot || 'Freestyle Workout'}
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            {format(new Date(workout.started_at), 'h:mm a')}
-                            {workout.completed_at && ' • Completed'}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => navigate('/workout')}
-                          className="text-primary-400 text-sm hover:text-primary-300"
-                        >
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+            {/* Daily Motivation */}
+            {(() => {
+              const quote = getDailyQuote();
+              return (
+                <div className="card relative overflow-hidden">
+                  <div className="absolute top-2 left-4 text-5xl text-primary-500/20 font-serif leading-none select-none">&ldquo;</div>
+                  <div className="pt-6 px-2">
+                    <p className="text-gray-200 italic text-base leading-relaxed">{quote.text}</p>
+                    <p className="text-primary-400 text-sm mt-3 font-medium">&mdash; {quote.author}</p>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-gray-400 text-sm">
-                  No workouts today. Click "Start Workout" to begin!
-                </p>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Today's Meals */}
             <div className="card">

@@ -1,59 +1,170 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// Lazily-initialized AudioContext (must be created after user gesture)
+let audioCtx: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  try {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    }
+    // Resume if suspended (browsers suspend until user gesture)
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  } catch {
+    return null;
+  }
+};
+
+const playCompletionSound = () => {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const playTone = (freq: number, startOffset: number, duration: number) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+    osc.start(ctx.currentTime + startOffset);
+    osc.stop(ctx.currentTime + startOffset + duration);
+  };
+
+  // Two-tone chime: C5 → E5
+  playTone(523.25, 0, 0.15);
+  playTone(659.25, 0.15, 0.25);
+};
+
 export const useRestTimer = (defaultSeconds: number = 90) => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isActive, setIsActive] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+
+  // Absolute timestamp (ms) when the timer should reach zero
+  const endTimeRef = useRef<number>(0);
+  // Milliseconds remaining when paused
+  const pausedRemainingRef = useRef<number>(0);
+  // Refs for cleanup
+  const rafRef = useRef<number>(0);
+  const intervalRef = useRef<number>(0);
+  // Track whether we already fired completion for this timer cycle
+  const completedRef = useRef<boolean>(false);
+
+  const computeRemaining = useCallback((): number => {
+    const ms = endTimeRef.current - Date.now();
+    return Math.max(0, Math.ceil(ms / 1000));
+  }, []);
+
+  const handleComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    setIsActive(false);
+    setTimeRemaining(0);
+    playCompletionSound();
+  }, []);
+
+  const tick = useCallback(() => {
+    if (!isActive) return;
+
+    const remaining = computeRemaining();
+    setTimeRemaining(remaining);
+
+    if (remaining <= 0) {
+      handleComplete();
+    }
+  }, [isActive, computeRemaining, handleComplete]);
+
+  // Main update loop: rAF for smooth visible updates + setInterval as background fallback
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
+    // requestAnimationFrame loop (pauses when tab hidden, but that's fine — setInterval covers it)
+    let running = true;
+    const rafLoop = () => {
+      if (!running) return;
+      tick();
+      rafRef.current = requestAnimationFrame(rafLoop);
+    };
+    rafRef.current = requestAnimationFrame(rafLoop);
+
+    // setInterval fallback — fires even in background (though throttled to ~1/sec)
+    intervalRef.current = window.setInterval(() => {
+      tick();
+    }, 250);
+
+    return () => {
+      running = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isActive, tick]);
+
+  // Recalculate immediately when the tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isActive) {
+        tick();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isActive, tick]);
+
+  // Warm up AudioContext on the first user-initiated start (satisfies autoplay policy)
+  const ensureAudioContext = useCallback(() => {
+    getAudioContext();
+  }, []);
 
   const start = useCallback((seconds?: number) => {
     const duration = seconds ?? defaultSeconds;
+    endTimeRef.current = Date.now() + duration * 1000;
+    pausedRemainingRef.current = 0;
+    completedRef.current = false;
     setTimeRemaining(duration);
     setIsActive(true);
-  }, [defaultSeconds]);
+    ensureAudioContext();
+  }, [defaultSeconds, ensureAudioContext]);
 
   const pause = useCallback(() => {
+    pausedRemainingRef.current = Math.max(0, endTimeRef.current - Date.now());
     setIsActive(false);
   }, []);
 
   const resume = useCallback(() => {
-    if (timeRemaining > 0) {
+    if (pausedRemainingRef.current > 0) {
+      endTimeRef.current = Date.now() + pausedRemainingRef.current;
+      completedRef.current = false;
       setIsActive(true);
     }
-  }, [timeRemaining]);
+  }, []);
 
   const reset = useCallback(() => {
     setIsActive(false);
     setTimeRemaining(0);
+    endTimeRef.current = 0;
+    pausedRemainingRef.current = 0;
+    completedRef.current = false;
   }, []);
 
   const skip = useCallback(() => {
     setIsActive(false);
     setTimeRemaining(0);
+    endTimeRef.current = 0;
+    pausedRemainingRef.current = 0;
+    completedRef.current = false;
   }, []);
-
-  useEffect(() => {
-    if (isActive && timeRemaining > 0) {
-      intervalRef.current = window.setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setIsActive(false);
-            // Could add notification here
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isActive, timeRemaining]);
 
   const formatTime = useCallback(() => {
     const minutes = Math.floor(timeRemaining / 60);

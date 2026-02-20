@@ -19,6 +19,23 @@ export const SettingsPage: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    displayMode: string;
+    serviceWorkerRegistered: boolean;
+    isStandalone: boolean;
+    eventListenerRegistered: boolean;
+    manifestLoaded: boolean;
+    isSecureContext: boolean;
+    protocol: string;
+  }>({
+    displayMode: 'unknown',
+    serviceWorkerRegistered: false,
+    isStandalone: false,
+    eventListenerRegistered: false,
+    manifestLoaded: false,
+    isSecureContext: false,
+    protocol: 'unknown',
+  });
 
   // Form state
   const [units, setUnits] = useState<'lbs' | 'kg'>('lbs');
@@ -37,14 +54,52 @@ export const SettingsPage: React.FC = () => {
 
   // Capture PWA install prompt
   useEffect(() => {
+    console.log('🔧 PWA Debug: useEffect initialized');
+
+    // Check secure context (HTTPS requirement)
+    const isSecureContext = window.isSecureContext;
+    const protocol = window.location.protocol;
+    console.log('🔧 PWA Debug: Secure context:', isSecureContext);
+    console.log('🔧 PWA Debug: Protocol:', protocol);
+
+    // Check display mode
+    const displayMode = window.matchMedia('(display-mode: standalone)').matches
+      ? 'standalone'
+      : window.matchMedia('(display-mode: fullscreen)').matches
+      ? 'fullscreen'
+      : window.matchMedia('(display-mode: minimal-ui)').matches
+      ? 'minimal-ui'
+      : 'browser';
+
+    console.log('🔧 PWA Debug: Display mode:', displayMode);
+
+    const isStandalone = displayMode === 'standalone' || displayMode === 'fullscreen';
+
     // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isStandalone) {
+      console.log('✅ PWA Debug: App is already installed (standalone mode)');
       setIsInstalled(true);
+      setDebugInfo(prev => ({ ...prev, displayMode, isStandalone: true }));
       return;
     }
 
+    // Check service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(registration => {
+        const swRegistered = !!registration;
+        console.log('🔧 PWA Debug: Service worker registered:', swRegistered);
+        setDebugInfo(prev => ({ ...prev, serviceWorkerRegistered: swRegistered }));
+      });
+    }
+
+    // Check if manifest is loaded
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    const manifestLoaded = !!manifestLink;
+    console.log('🔧 PWA Debug: Manifest link found:', manifestLoaded, manifestLink?.getAttribute('href'));
+
     // Listen for install prompt
     const handleBeforeInstallPrompt = (e: any) => {
+      console.log('🎉 PWA Debug: beforeinstallprompt event fired!', e);
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
@@ -52,15 +107,36 @@ export const SettingsPage: React.FC = () => {
 
     // Listen for app installed
     const handleAppInstalled = () => {
+      console.log('✅ PWA Debug: App installed successfully');
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
     };
 
+    console.log('🔧 PWA Debug: Registering event listeners');
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    setDebugInfo(prev => ({
+      ...prev,
+      displayMode,
+      isStandalone,
+      eventListenerRegistered: true,
+      manifestLoaded,
+      isSecureContext,
+      protocol,
+    }));
+
+    // Check if beforeinstallprompt was already fired (unlikely but possible)
+    setTimeout(() => {
+      console.log('🔧 PWA Debug: 2 seconds elapsed, checking state');
+      console.log('  - isInstallable:', isInstallable);
+      console.log('  - deferredPrompt:', deferredPrompt);
+      console.log('  - User agent:', navigator.userAgent);
+    }, 2000);
+
     return () => {
+      console.log('🔧 PWA Debug: Removing event listeners');
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -208,34 +284,123 @@ export const SettingsPage: React.FC = () => {
 
         {/* PWA Install */}
         {!isInstalled && (
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-2">Install App</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              {isInstallable
-                ? 'Install The Iron Ledger as a standalone app on your device for the best experience.'
-                : 'The app can be installed once it\'s ready. Try refreshing the page if you don\'t see the install button.'}
-            </p>
-            {isInstallable ? (
-              <button
-                onClick={handleInstallClick}
-                className="btn btn-primary w-full"
-              >
-                📱 Install App
-              </button>
-            ) : (
-              <div className="p-3 bg-gray-700 rounded-lg text-sm text-gray-400">
-                <p className="mb-2">
-                  <strong>Benefits of installing:</strong>
+          <>
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">Install App</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                {isInstallable
+                  ? 'Install The Iron Ledger as a standalone app on your device for the best experience.'
+                  : 'The app can be installed once it\'s ready. Try refreshing the page if you don\'t see the install button.'}
+              </p>
+              {isInstallable ? (
+                <button
+                  onClick={handleInstallClick}
+                  className="btn btn-primary w-full"
+                >
+                  📱 Install App
+                </button>
+              ) : (
+                <div className="p-3 bg-gray-700 rounded-lg text-sm text-gray-400">
+                  <p className="mb-2">
+                    <strong>Benefits of installing:</strong>
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Works offline with all your data</li>
+                    <li>No browser UI - looks like a native app</li>
+                    <li>App shortcuts for quick access</li>
+                    <li>Faster loading and better performance</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* PWA Debug Info */}
+            <div className="card border border-yellow-700/30">
+              <h3 className="text-sm font-semibold mb-2 text-yellow-400">🔧 PWA Debug Info</h3>
+              <div className="text-xs space-y-1 text-gray-300 font-mono">
+                <div className="flex justify-between">
+                  <span>Protocol:</span>
+                  <span className={debugInfo.protocol === 'https:' ? 'text-green-400' : 'text-red-400'}>
+                    {debugInfo.protocol}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Secure Context:</span>
+                  <span className={debugInfo.isSecureContext ? 'text-green-400' : 'text-red-400'}>
+                    {debugInfo.isSecureContext ? '✓ Yes (HTTPS)' : '✗ No (HTTP)'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Display Mode:</span>
+                  <span className={debugInfo.displayMode === 'browser' ? 'text-yellow-400' : 'text-green-400'}>
+                    {debugInfo.displayMode}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Is Standalone:</span>
+                  <span className={debugInfo.isStandalone ? 'text-green-400' : 'text-gray-400'}>
+                    {debugInfo.isStandalone ? '✓ Yes' : '✗ No'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Service Worker:</span>
+                  <span className={debugInfo.serviceWorkerRegistered ? 'text-green-400' : 'text-red-400'}>
+                    {debugInfo.serviceWorkerRegistered ? '✓ Registered' : '✗ Not registered'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Manifest:</span>
+                  <span className={debugInfo.manifestLoaded ? 'text-green-400' : 'text-red-400'}>
+                    {debugInfo.manifestLoaded ? '✓ Found' : '✗ Not found'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Event Listener:</span>
+                  <span className={debugInfo.eventListenerRegistered ? 'text-green-400' : 'text-red-400'}>
+                    {debugInfo.eventListenerRegistered ? '✓ Registered' : '✗ Not registered'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Install Prompt:</span>
+                  <span className={isInstallable ? 'text-green-400' : 'text-yellow-400'}>
+                    {isInstallable ? '✓ Available' : '⏳ Waiting...'}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <p className="text-xs text-gray-400 mb-2">
+                  <strong>Issue Found:</strong>
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Works offline with all your data</li>
-                  <li>No browser UI - looks like a native app</li>
-                  <li>App shortcuts for quick access</li>
-                  <li>Faster loading and better performance</li>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  {!debugInfo.isSecureContext && (
+                    <>
+                      <li className="text-red-400 font-semibold">⚠ HTTPS Required!</li>
+                      <li>• Service workers require HTTPS (or localhost)</li>
+                      <li>• You're currently using HTTP ({debugInfo.protocol})</li>
+                      <li className="mt-2 text-white"><strong>Solution:</strong></li>
+                      <li>• Set up HTTPS with a self-signed certificate, or</li>
+                      <li>• Access via SSH tunnel: ssh -L 8080:localhost:80 patrick@192.168.1.44</li>
+                      <li>• Then open: http://localhost:8080</li>
+                    </>
+                  )}
+                  {debugInfo.isSecureContext && !debugInfo.serviceWorkerRegistered && (
+                    <li>• Service worker not registered - check console for errors</li>
+                  )}
+                  {debugInfo.isSecureContext && !debugInfo.manifestLoaded && (
+                    <li>• Manifest not found - check if manifest.webmanifest exists</li>
+                  )}
+                  {debugInfo.isSecureContext && debugInfo.serviceWorkerRegistered && debugInfo.manifestLoaded && !isInstallable && (
+                    <>
+                      <li>• PWA criteria met but install prompt not firing</li>
+                      <li>• This may be due to browser engagement heuristics</li>
+                      <li>• Check browser console for more details (F12)</li>
+                      <li>• Try Chrome menu → Install app (top right ⋮)</li>
+                    </>
+                  )}
                 </ul>
               </div>
-            )}
-          </div>
+            </div>
+          </>
         )}
 
         {isInstalled && (
@@ -516,9 +681,27 @@ export const SettingsPage: React.FC = () => {
         <div className="card">
           <h3 className="text-lg font-semibold mb-2">About</h3>
           <p className="text-sm text-gray-400">
-            HealthApp v1.0.0<br />
+            The Iron Ledger v1.0.0<br />
             Offline-first workout & nutrition tracker
           </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Build: {import.meta.env.MODE} • {((window as any).__BUILD_TIME__ || new Date().toISOString()).split('T')[0]}
+          </p>
+          <button
+            onClick={() => {
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(reg => {
+                  if (reg) {
+                    reg.update();
+                    alert('Checking for updates...');
+                  }
+                });
+              }
+            }}
+            className="btn btn-secondary w-full mt-3 text-sm"
+          >
+            Check for Updates
+          </button>
         </div>
       </div>
     </div>
