@@ -1,4 +1,5 @@
 """Open Food Facts API proxy endpoints."""
+import re
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import httpx
@@ -21,6 +22,43 @@ class OpenFoodFactsProduct(BaseModel):
     carbs: int
     fat: int
     image_url: Optional[str] = None
+
+
+# Conversion factors to grams for common weight units
+_UNIT_TO_GRAMS = {
+    "g": 1.0,
+    "mg": 0.001,
+    "kg": 1000.0,
+    "oz": 28.3495,
+    "lb": 453.592,
+    "ml": 1.0,  # approximate (density ≈ 1 for most beverages)
+    "cl": 10.0,
+    "dl": 100.0,
+    "l": 1000.0,
+}
+
+
+def _parse_serving_grams(serving_size: str) -> Optional[float]:
+    """Try to extract grams from a serving_size string like '28g', '1 oz', '250 ml'."""
+    if not serving_size:
+        return None
+    # Match patterns like "28g", "1.5 oz", "250ml", "100 g"
+    match = re.search(r"(\d+(?:[.,]\d+)?)\s*(g|mg|kg|oz|lb|ml|cl|dl|l)\b", serving_size.lower())
+    if not match:
+        return None
+    amount = float(match.group(1).replace(",", "."))
+    unit = match.group(2)
+    factor = _UNIT_TO_GRAMS.get(unit)
+    if factor is None or amount <= 0:
+        return None
+    return amount * factor
+
+
+def _scale_to_serving(per_100g: float, serving_grams: Optional[float]) -> int:
+    """Scale a per-100g value to per-serving. Falls back to per-100g if parsing fails."""
+    if serving_grams is None or serving_grams <= 0:
+        return int(per_100g)
+    return int(round(per_100g * serving_grams / 100.0))
 
 
 @router.get("/barcode/{barcode}")
@@ -49,12 +87,27 @@ async def get_product_by_barcode(barcode: str):
             if not serving_size:
                 serving_size = "100g"
 
-            # Extract macros (Open Food Facts stores per 100g)
-            # Convert to float first to handle decimal strings, then to int
-            calories = int(float(nutriments.get("energy-kcal_100g", 0) or 0))
-            protein = int(float(nutriments.get("proteins_100g", 0) or 0))
-            carbs = int(float(nutriments.get("carbohydrates_100g", 0) or 0))
-            fat = int(float(nutriments.get("fat_100g", 0) or 0))
+            # Extract per-100g macros, then convert to per-serving
+            cal_100g = float(nutriments.get("energy-kcal_100g", 0) or 0)
+            pro_100g = float(nutriments.get("proteins_100g", 0) or 0)
+            carb_100g = float(nutriments.get("carbohydrates_100g", 0) or 0)
+            fat_100g = float(nutriments.get("fat_100g", 0) or 0)
+
+            # Use serving_quantity (grams) from OFF if available, otherwise parse serving_size string
+            serving_grams = None
+            sq = product.get("serving_quantity")
+            if sq:
+                try:
+                    serving_grams = float(sq)
+                except (ValueError, TypeError):
+                    pass
+            if serving_grams is None:
+                serving_grams = _parse_serving_grams(serving_size)
+
+            calories = _scale_to_serving(cal_100g, serving_grams)
+            protein = _scale_to_serving(pro_100g, serving_grams)
+            carbs = _scale_to_serving(carb_100g, serving_grams)
+            fat = _scale_to_serving(fat_100g, serving_grams)
 
             # Build product name
             name = product.get("product_name", "Unknown Product")
@@ -98,7 +151,7 @@ async def search_products(
                     "page": page,
                     "page_size": page_size,
                     "json": 1,
-                    "fields": "code,product_name,brands,serving_size,nutriments,image_url",
+                    "fields": "code,product_name,brands,serving_size,serving_quantity,nutriments,image_url",
                 }
             )
             response.raise_for_status()
@@ -113,12 +166,27 @@ async def search_products(
                 if not serving_size:
                     serving_size = "100g"
 
-                # Extract macros (per 100g)
-                # Convert to float first to handle decimal strings, then to int
-                calories = int(float(nutriments.get("energy-kcal_100g", 0) or 0))
-                protein = int(float(nutriments.get("proteins_100g", 0) or 0))
-                carbs = int(float(nutriments.get("carbohydrates_100g", 0) or 0))
-                fat = int(float(nutriments.get("fat_100g", 0) or 0))
+                # Extract per-100g macros, then convert to per-serving
+                cal_100g = float(nutriments.get("energy-kcal_100g", 0) or 0)
+                pro_100g = float(nutriments.get("proteins_100g", 0) or 0)
+                carb_100g = float(nutriments.get("carbohydrates_100g", 0) or 0)
+                fat_100g = float(nutriments.get("fat_100g", 0) or 0)
+
+                # Use serving_quantity (grams) from OFF if available, otherwise parse
+                serving_grams = None
+                sq = product.get("serving_quantity")
+                if sq:
+                    try:
+                        serving_grams = float(sq)
+                    except (ValueError, TypeError):
+                        pass
+                if serving_grams is None:
+                    serving_grams = _parse_serving_grams(serving_size)
+
+                calories = _scale_to_serving(cal_100g, serving_grams)
+                protein = _scale_to_serving(pro_100g, serving_grams)
+                carbs = _scale_to_serving(carb_100g, serving_grams)
+                fat = _scale_to_serving(fat_100g, serving_grams)
 
                 # Build product name
                 name = product.get("product_name", "Unknown Product")

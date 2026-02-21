@@ -13,6 +13,7 @@ import {
   UpdateSetRequest,
   Set,
   PreviousPerformance,
+  WorkoutWeeklyStats,
 } from '../types/workout';
 
 // Exercises
@@ -379,6 +380,16 @@ export const deleteSet = async (
   setId: string
 ): Promise<void> => {
   await api.delete(`/workouts/${workoutId}/sets/${setId}`);
+};
+
+// Weekly Stats
+export const getWorkoutWeeklyStats = async (
+  endDate: string
+): Promise<WorkoutWeeklyStats> => {
+  const response = await api.get('/workouts/weekly-stats', {
+    params: { end_date: endDate },
+  });
+  return response.data;
 };
 
 // Previous Performance

@@ -63,7 +63,7 @@ export const PortionInput: React.FC<PortionInputProps> = ({
               type="number"
               value={servings}
               onChange={(e) => setServings(e.target.value)}
-              className="flex-1 px-4 py-3 bg-gray-700 rounded-lg text-center text-2xl font-bold"
+              className="flex-1 min-w-0 px-3 py-3 bg-gray-700 rounded-lg text-center text-xl font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               step="0.5"
               min="0"
             />

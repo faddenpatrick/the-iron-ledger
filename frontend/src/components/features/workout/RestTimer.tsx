@@ -38,7 +38,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
       // Vibrate if supported (mobile)
       if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200]);
+        navigator.vibrate([200, 100, 200, 100, 200]);
       }
 
       // Clear flash after 2 seconds
@@ -71,7 +71,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
       <div
         className={`rounded-lg p-4 shadow-lg transition-colors duration-300 ${
           justCompleted
-            ? 'bg-green-600 animate-pulse'
+            ? 'bg-green-600 animate-complete-glow'
             : 'bg-primary-600'
         }`}
       >
@@ -141,8 +141,8 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         )}
 
         {justCompleted && (
-          <div className="text-center font-bold text-lg mt-2">
-            Rest Complete! 💪
+          <div className="text-center font-bold text-lg mt-2 animate-fade-in">
+            Rest Complete!
           </div>
         )}
       </div>

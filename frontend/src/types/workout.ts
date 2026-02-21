@@ -133,3 +133,13 @@ export interface PreviousPerformance {
   previous_workout_date: string | null;
   previous_sets: PreviousSetData[];
 }
+
+export interface WorkoutWeeklyStats {
+  start_date: string;
+  end_date: string;
+  workouts_completed: number;
+  total_volume: number;
+  total_sets: number;
+  avg_sets_per_workout: number;
+  avg_workout_duration_minutes: number | null;
+}

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 // Lazily-initialized AudioContext (must be created after user gesture)
 let audioCtx: AudioContext | null = null;
 
-const getAudioContext = (): AudioContext | null => {
+const getOrCreateAudioContext = (): AudioContext | null => {
   try {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -11,36 +11,53 @@ const getAudioContext = (): AudioContext | null => {
         audioCtx = new AudioContextClass();
       }
     }
-    // Resume if suspended (browsers suspend until user gesture)
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
     return audioCtx;
   } catch {
     return null;
   }
 };
 
-const playCompletionSound = () => {
-  const ctx = getAudioContext();
+const ensureResumed = async (ctx: AudioContext): Promise<boolean> => {
+  if (ctx.state !== 'running') {
+    try {
+      await ctx.resume();
+    } catch {
+      return false;
+    }
+  }
+  return ctx.state === 'running';
+};
+
+const playCompletionSound = async () => {
+  const ctx = getOrCreateAudioContext();
   if (!ctx) return;
 
-  const playTone = (freq: number, startOffset: number, duration: number) => {
+  // Await resume — critical for backgrounded tabs
+  const isRunning = await ensureResumed(ctx);
+  if (!isRunning) return;
+
+  const playTone = (freq: number, startOffset: number, duration: number, gainValue: number) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.frequency.value = freq;
     osc.type = 'sine';
-    gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset);
+
+    // Envelope: quick attack, sustain, then fade
+    gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+    gain.gain.linearRampToValueAtTime(gainValue, ctx.currentTime + startOffset + 0.02);
+    gain.gain.setValueAtTime(gainValue, ctx.currentTime + startOffset + duration * 0.6);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+
     osc.start(ctx.currentTime + startOffset);
     osc.stop(ctx.currentTime + startOffset + duration);
   };
 
-  // Two-tone chime: C5 → E5
-  playTone(523.25, 0, 0.15);
-  playTone(659.25, 0.15, 0.25);
+  // Three-tone ascending chime: C5 → E5 → G5 (major chord arpeggio)
+  playTone(523.25, 0, 0.25, 0.5);     // C5, 250ms
+  playTone(659.25, 0.28, 0.25, 0.5);  // E5, 250ms
+  playTone(783.99, 0.56, 0.40, 0.5);  // G5, 400ms (final note rings longer)
 };
 
 export const useRestTimer = (defaultSeconds: number = 90) => {
@@ -124,7 +141,7 @@ export const useRestTimer = (defaultSeconds: number = 90) => {
 
   // Warm up AudioContext on the first user-initiated start (satisfies autoplay policy)
   const ensureAudioContext = useCallback(() => {
-    getAudioContext();
+    getOrCreateAudioContext();
   }, []);
 
   const start = useCallback((seconds?: number) => {

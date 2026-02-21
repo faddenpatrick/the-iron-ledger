@@ -1,10 +1,10 @@
 """Workout logging and template management endpoints."""
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User
@@ -27,6 +27,7 @@ from ...schemas.workout import (
     SaveAsTemplateRequest,
     PreviousPerformanceResponse,
     PreviousSetData,
+    WorkoutWeeklyStatsResponse,
 )
 
 router = APIRouter()
@@ -313,6 +314,66 @@ def get_workouts(
     workouts = query.order_by(Workout.workout_date.desc()).offset(skip).limit(limit).all()
 
     return workouts
+
+
+@router.get("/weekly-stats", response_model=WorkoutWeeklyStatsResponse)
+def get_weekly_stats(
+    end_date: date = Query(..., description="End date for 7-day window"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get 7-day workout statistics: count, volume, avg sets, avg duration."""
+    start_date_val = end_date - timedelta(days=6)
+
+    # Find completed workouts in range
+    completed_workouts = db.query(Workout).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+        Workout.workout_date >= start_date_val,
+        Workout.workout_date <= end_date,
+    ).all()
+
+    workouts_completed = len(completed_workouts)
+    workout_ids = [w.id for w in completed_workouts]
+
+    # Aggregate volume and sets from completed sets
+    total_volume = 0.0
+    total_sets = 0
+    if workout_ids:
+        stats = db.query(
+            func.sum(
+                func.coalesce(Set.weight, 0) * func.coalesce(Set.reps, 0)
+            ).label('total_volume'),
+            func.count(Set.id).label('total_sets'),
+        ).filter(
+            Set.workout_id.in_(workout_ids),
+            Set.is_completed == True,
+        ).first()
+        total_volume = float(stats.total_volume or 0)
+        total_sets = int(stats.total_sets or 0)
+
+    # Calculate average workout duration
+    avg_duration = None
+    if completed_workouts:
+        durations = []
+        for w in completed_workouts:
+            if w.started_at and w.completed_at:
+                delta = (w.completed_at - w.started_at).total_seconds() / 60
+                if 0 < delta < 480:  # Filter out unrealistic durations (> 8 hours)
+                    durations.append(delta)
+        if durations:
+            avg_duration = round(sum(durations) / len(durations), 1)
+
+    return WorkoutWeeklyStatsResponse(
+        start_date=start_date_val,
+        end_date=end_date,
+        workouts_completed=workouts_completed,
+        total_volume=total_volume,
+        total_sets=total_sets,
+        avg_sets_per_workout=round(total_sets / workouts_completed, 1) if workouts_completed > 0 else 0,
+        avg_workout_duration_minutes=avg_duration,
+    )
 
 
 @router.get("/{workout_id}", response_model=WorkoutResponse)

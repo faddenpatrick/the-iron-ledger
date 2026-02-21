@@ -112,3 +112,14 @@ class PreviousPerformanceResponse(BaseModel):
     has_previous: bool
     previous_workout_date: Optional[date]
     previous_sets: List[PreviousSetData] = []
+
+
+class WorkoutWeeklyStatsResponse(BaseModel):
+    """7-day workout statistics summary."""
+    start_date: date
+    end_date: date
+    workouts_completed: int
+    total_volume: float
+    total_sets: int
+    avg_sets_per_workout: float
+    avg_workout_duration_minutes: Optional[float] = None

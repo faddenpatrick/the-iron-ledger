@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { format, getDayOfYear } from 'date-fns';
-import { getWorkouts } from '../services/workout.service';
-import { getMeals, getNutritionSummary } from '../services/nutrition.service';
-import { WorkoutList } from '../types/workout';
-import { MealList, NutritionSummary } from '../types/nutrition';
+import { getWorkouts, getWorkoutWeeklyStats } from '../services/workout.service';
+import { getNutritionSummary, getWeeklySummary } from '../services/nutrition.service';
+import { WorkoutList, WorkoutWeeklyStats } from '../types/workout';
+import { NutritionSummary, WeeklySummary } from '../types/nutrition';
+import { WeeklyStatsCard } from '../components/features/dashboard/WeeklyStatsCard';
 
 const MOTIVATIONAL_QUOTES = [
   { text: "The last three or four reps is what makes the muscle grow. This area of pain divides a champion from someone who is not a champion.", author: "Arnold Schwarzenegger" },
@@ -50,9 +51,11 @@ const getDailyQuote = () => {
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [todayWorkouts, setTodayWorkouts] = useState<WorkoutList[]>([]);
-  const [todayMeals, setTodayMeals] = useState<MealList[]>([]);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
+  const [weeklyNutrition, setWeeklyNutrition] = useState<WeeklySummary | null>(null);
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState<WorkoutWeeklyStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [hasActiveWorkout, setHasActiveWorkout] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -73,9 +76,19 @@ export const Dashboard: React.FC = () => {
       const hasIncomplete = workouts.some((w) => w.completed_at === null);
       setHasActiveWorkout(!!activeId || hasIncomplete);
 
-      // Fetch today's meals
-      const meals = await getMeals(today);
-      setTodayMeals(meals);
+      // Fetch weekly stats (parallel, independent loading state)
+      setWeeklyLoading(true);
+      Promise.all([
+        getWeeklySummary(today),
+        getWorkoutWeeklyStats(today),
+      ]).then(([nutrition, workout]) => {
+        setWeeklyNutrition(nutrition);
+        setWeeklyWorkouts(workout);
+      }).catch((error) => {
+        console.error('Failed to fetch weekly stats:', error);
+      }).finally(() => {
+        setWeeklyLoading(false);
+      });
 
       // Fetch nutrition summary
       try {
@@ -312,42 +325,15 @@ export const Dashboard: React.FC = () => {
               );
             })()}
 
-            {/* Today's Meals */}
-            <div className="card">
-              <h3 className="text-lg font-semibold mb-3">Today's Meals</h3>
-              {todayMeals.length > 0 ? (
-                <div className="space-y-2">
-                  {todayMeals.map((meal) => (
-                    <div
-                      key={meal.id}
-                      className="p-3 bg-gray-700 rounded-lg"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium">{meal.category_name_snapshot}</div>
-                          <div className="text-sm text-gray-400">
-                            {format(new Date(meal.meal_time), 'h:mm a')}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => navigate('/nutrition')}
-                          className="text-primary-400 text-sm hover:text-primary-300"
-                        >
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm">
-                  No meals logged today.
-                </p>
-              )}
-            </div>
+            {/* Weekly Stats */}
+            <WeeklyStatsCard
+              nutritionStats={weeklyNutrition}
+              workoutStats={weeklyWorkouts}
+              loading={weeklyLoading}
+            />
 
             {/* Welcome message for new users */}
-            {todayWorkouts.length === 0 && todayMeals.length === 0 && (
+            {todayWorkouts.length === 0 && (!nutritionSummary || nutritionSummary.total_calories === 0) && (
               <div className="card">
                 <h3 className="text-xl font-bold mb-3">Welcome to The Iron Ledger!</h3>
                 <p className="text-gray-300 mb-4">
