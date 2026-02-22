@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User
@@ -174,7 +174,7 @@ def update_template(
             )
             db.add(template_exercise)
 
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(template)
 
@@ -205,7 +205,7 @@ def delete_template(
             detail="Template not found"
         )
 
-    template.deleted_at = datetime.utcnow()
+    template.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
 
@@ -421,7 +421,7 @@ def complete_workout(
         )
 
     workout.completed_at = complete_data.completed_at
-    workout.updated_at = datetime.utcnow()
+    workout.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(workout)
@@ -448,7 +448,7 @@ def delete_workout(
             detail="Workout not found"
         )
 
-    workout.deleted_at = datetime.utcnow()
+    workout.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
 
@@ -629,7 +629,7 @@ def add_set(
     db.add(set_obj)
 
     # Update workout timestamp
-    workout.updated_at = datetime.utcnow()
+    workout.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(set_obj)
@@ -678,12 +678,12 @@ def update_set(
 
     # If marking as completed, set timestamp
     if 'is_completed' in update_data and update_data['is_completed']:
-        set_obj.completed_at = datetime.utcnow()
+        set_obj.completed_at = datetime.now(timezone.utc)
     elif 'is_completed' in update_data and not update_data['is_completed']:
         set_obj.completed_at = None
 
     # Update workout timestamp
-    workout.updated_at = datetime.utcnow()
+    workout.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(set_obj)
@@ -727,7 +727,7 @@ def delete_set(
     db.delete(set_obj)
 
     # Update workout timestamp
-    workout.updated_at = datetime.utcnow()
+    workout.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     return None

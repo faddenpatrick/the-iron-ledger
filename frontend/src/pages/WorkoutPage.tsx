@@ -6,9 +6,9 @@ import { WorkoutHistory } from '../components/features/workout/WorkoutHistory';
 import { WorkoutViewer } from '../components/features/workout/WorkoutViewer';
 import { CardioPlaceholder } from '../components/features/workout/CardioPlaceholder';
 import { TemplateBuilder } from '../components/features/workout/TemplateBuilder';
-import { createWorkout, getWorkouts } from '../services/workout.service';
+import { createWorkout, getWorkouts, getTemplate } from '../services/workout.service';
 import { format } from 'date-fns';
-import { WorkoutType } from '../types/workout';
+import { WorkoutType, WorkoutTemplate } from '../types/workout';
 
 const ACTIVE_WORKOUT_KEY = 'activeWorkoutId';
 
@@ -21,6 +21,7 @@ export const WorkoutPage: React.FC = () => {
   const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
   const [refreshTemplates, setRefreshTemplates] = useState(0);
 
   // Restore active workout on mount
@@ -109,6 +110,17 @@ export const WorkoutPage: React.FC = () => {
     setActiveTab('templates');
   };
 
+  const handleEditTemplate = async (templateId: string) => {
+    try {
+      const template = await getTemplate(templateId);
+      setEditingTemplate(template);
+      setShowTemplateBuilder(true);
+    } catch (error) {
+      console.error('Failed to load routine for editing:', error);
+      alert('Failed to load routine');
+    }
+  };
+
   const topTabs = [
     { id: 'lifting' as TopTab, label: 'Lifting', icon: '🏋️' },
     { id: 'cardio' as TopTab, label: 'Cardio', icon: '🏃' },
@@ -184,6 +196,7 @@ export const WorkoutPage: React.FC = () => {
                   workoutType={topTab}
                   onSelectTemplate={handleStartFromTemplate}
                   onCreateTemplate={() => setShowTemplateBuilder(true)}
+                  onEditTemplate={handleEditTemplate}
                 />
               </div>
             )}
@@ -231,11 +244,16 @@ export const WorkoutPage: React.FC = () => {
         {/* Template Builder Modal */}
         {showTemplateBuilder && (
           <TemplateBuilder
-            onClose={() => setShowTemplateBuilder(false)}
+            onClose={() => {
+              setShowTemplateBuilder(false);
+              setEditingTemplate(null);
+            }}
             onSuccess={() => {
               setShowTemplateBuilder(false);
+              setEditingTemplate(null);
               setRefreshTemplates(prev => prev + 1);
             }}
+            editTemplate={editingTemplate ?? undefined}
           />
         )}
       </div>

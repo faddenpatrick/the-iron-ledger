@@ -5,12 +5,14 @@ import { getTemplates, deleteTemplate, updateTemplate } from '../../../services/
 interface TemplateListProps {
   onSelectTemplate: (templateId: string) => void;
   onCreateTemplate: () => void;
+  onEditTemplate?: (templateId: string) => void;
   workoutType?: 'lifting' | 'cardio';
 }
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   onSelectTemplate,
   onCreateTemplate: _onCreateTemplate,
+  onEditTemplate,
   workoutType = 'lifting',
 }) => {
   const [templates, setTemplates] = useState<WorkoutTemplateList[]>([]);
@@ -170,6 +172,15 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                     >
                       Start
                     </button>
+                    {onEditTemplate && (
+                      <button
+                        onClick={() => onEditTemplate(template.id)}
+                        className="px-3 py-2 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg"
+                        title="Edit routine"
+                      >
+                        ✏️
+                      </button>
+                    )}
                     <button
                       onClick={() => setDeletingId(template.id)}
                       className="px-4 py-2 text-red-400 hover:text-red-300"

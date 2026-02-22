@@ -8,6 +8,7 @@ import {
   Workout,
   WorkoutList,
   CreateTemplateRequest,
+  UpdateTemplateRequest,
   CreateWorkoutRequest,
   CreateSetRequest,
   UpdateSetRequest,
@@ -155,7 +156,7 @@ export const createTemplate = async (
 
 export const updateTemplate = async (
   id: string,
-  data: { name: string }
+  data: UpdateTemplateRequest
 ): Promise<WorkoutTemplate> => {
   const response = await api.put(`/workouts/templates/${id}`, data);
   return response.data;

@@ -1,6 +1,6 @@
 """Nutrition tracking models."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Date, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -17,9 +17,9 @@ class MealCategory(Base):
     name = Column(String(100), nullable=False)
     display_order = Column(Integer, nullable=False, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)  # Soft delete
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
 
     # Relationships
     user = relationship("User", back_populates="meal_categories")
@@ -44,9 +44,9 @@ class Food(Base):
     is_custom = Column(Boolean, default=False, nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)  # null for system foods
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)  # Soft delete
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
 
     # Relationships
     user = relationship("User", back_populates="foods")
@@ -66,11 +66,11 @@ class Meal(Base):
     category_name_snapshot = Column(String(100), nullable=False)
 
     meal_date = Column(Date, nullable=False, index=True)
-    meal_time = Column(DateTime, nullable=False)
+    meal_time = Column(DateTime(timezone=True), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, index=True)
-    deleted_at = Column(DateTime, nullable=True)  # Soft delete
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
 
     # Relationships
     user = relationship("User", back_populates="meals")
@@ -96,7 +96,7 @@ class MealItem(Base):
 
     servings = Column(Float, nullable=False)  # Number of servings (e.g., 1.5, 2)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     meal = relationship("Meal", back_populates="items")

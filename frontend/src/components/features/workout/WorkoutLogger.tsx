@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Exercise, PreviousPerformance, PreviousSetData } from '../../../types/workout';
+import { Exercise, PreviousPerformance, PreviousSetData, TemplateExerciseRequest } from '../../../types/workout';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useRestTimer } from '../../../hooks/useRestTimer';
 import {
@@ -7,6 +7,8 @@ import {
   saveWorkoutAsTemplate,
   getPreviousPerformance,
   deleteWorkout,
+  getTemplate,
+  updateTemplate,
 } from '../../../services/workout.service';
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetRow } from './SetRow';
@@ -26,6 +28,12 @@ interface WorkoutLoggerProps {
   onCancel?: () => void;
 }
 
+interface RoutineChange {
+  type: 'added' | 'removed' | 'reordered' | 'sets_changed' | 'weight_changed';
+  exerciseName: string;
+  detail?: string;
+}
+
 export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   workoutId,
   onComplete,
@@ -39,6 +47,9 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const [previousPerformance, setPreviousPerformance] = useState<
     Record<string, PreviousPerformance>
   >({});
+  const [showUpdateRoutine, setShowUpdateRoutine] = useState(false);
+  const [routineChanges, setRoutineChanges] = useState<RoutineChange[]>([]);
+  const [updatingRoutine, setUpdatingRoutine] = useState(false);
 
   // Group sets by exercise
   const exerciseGroups = workout?.sets.reduce((acc, set) => {
@@ -167,15 +178,171 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     }
   };
 
+  /** Compare the workout as performed against the saved template */
+  const detectRoutineChanges = async (): Promise<RoutineChange[]> => {
+    if (!workout?.template_id) return [];
+
+    try {
+      const template = await getTemplate(workout.template_id);
+      const changes: RoutineChange[] = [];
+
+      // Build workout exercise order from sets
+      const workoutExerciseOrder: string[] = [];
+      const workoutExerciseSets: Record<string, number> = {};
+      const workoutExerciseWeights: Record<string, number> = {};
+      const workoutExerciseNames: Record<string, string> = {};
+
+      for (const set of workout.sets) {
+        if (!workoutExerciseOrder.includes(set.exercise_id)) {
+          workoutExerciseOrder.push(set.exercise_id);
+        }
+        workoutExerciseSets[set.exercise_id] = (workoutExerciseSets[set.exercise_id] || 0) + 1;
+        workoutExerciseNames[set.exercise_id] = set.exercise_name_snapshot;
+        // Track the most common weight used (last completed set weight)
+        if (set.weight && set.is_completed) {
+          workoutExerciseWeights[set.exercise_id] = set.weight;
+        }
+      }
+
+      // Template exercise order
+      const templateExercises = [...template.exercises].sort((a, b) => a.order_index - b.order_index);
+      const templateExerciseIds = templateExercises.map((te) => te.exercise_id);
+
+      // Check for added exercises
+      for (const exerciseId of workoutExerciseOrder) {
+        if (!templateExerciseIds.includes(exerciseId)) {
+          changes.push({
+            type: 'added',
+            exerciseName: workoutExerciseNames[exerciseId],
+          });
+        }
+      }
+
+      // Check for removed exercises
+      for (const te of templateExercises) {
+        if (!workoutExerciseOrder.includes(te.exercise_id)) {
+          changes.push({
+            type: 'removed',
+            exerciseName: te.exercise.name,
+          });
+        }
+      }
+
+      // Check for reordering (among exercises that exist in both)
+      const commonInWorkout = workoutExerciseOrder.filter((id) => templateExerciseIds.includes(id));
+      const commonInTemplate = templateExerciseIds.filter((id) => workoutExerciseOrder.includes(id));
+      if (commonInWorkout.length > 1 && JSON.stringify(commonInWorkout) !== JSON.stringify(commonInTemplate)) {
+        changes.push({
+          type: 'reordered',
+          exerciseName: 'Exercise order',
+          detail: 'Exercises were performed in a different order',
+        });
+      }
+
+      // Check for set count changes
+      for (const te of templateExercises) {
+        if (!workoutExerciseOrder.includes(te.exercise_id)) continue;
+        const templateSets = te.target_sets ?? 3;
+        const workoutSetCount = workoutExerciseSets[te.exercise_id] || 0;
+        if (workoutSetCount !== templateSets) {
+          changes.push({
+            type: 'sets_changed',
+            exerciseName: te.exercise.name,
+            detail: `${templateSets} sets → ${workoutSetCount} sets`,
+          });
+        }
+      }
+
+      // Check for significant weight changes
+      for (const te of templateExercises) {
+        if (!workoutExerciseOrder.includes(te.exercise_id)) continue;
+        const templateWeight = te.target_weight ?? 0;
+        const workoutWeight = workoutExerciseWeights[te.exercise_id] ?? 0;
+        if (workoutWeight > 0 && templateWeight !== workoutWeight) {
+          changes.push({
+            type: 'weight_changed',
+            exerciseName: te.exercise.name,
+            detail: `${templateWeight} lbs → ${workoutWeight} lbs`,
+          });
+        }
+      }
+
+      return changes;
+    } catch (error) {
+      console.error('Failed to detect routine changes:', error);
+      return [];
+    }
+  };
+
   const handleCompleteWorkout = async () => {
     if (!workout) return;
 
     try {
       await completeWorkout(workout.id, new Date().toISOString());
+
+      // If this was a template-based workout, check for changes
+      if (workout.template_id) {
+        const changes = await detectRoutineChanges();
+        if (changes.length > 0) {
+          setRoutineChanges(changes);
+          setShowUpdateRoutine(true);
+          return; // Don't call onComplete yet, wait for user choice
+        }
+      }
+
       onComplete();
     } catch (error) {
       console.error('Failed to complete workout:', error);
     }
+  };
+
+  const handleUpdateRoutine = async () => {
+    if (!workout?.template_id) return;
+
+    setUpdatingRoutine(true);
+    try {
+      // Build new template exercises from the workout as performed
+      const exerciseOrder: string[] = [];
+      const exerciseSets: Record<string, number> = {};
+      const exerciseWeights: Record<string, number> = {};
+      const exerciseReps: Record<string, number> = {};
+
+      for (const set of workout.sets) {
+        if (!exerciseOrder.includes(set.exercise_id)) {
+          exerciseOrder.push(set.exercise_id);
+        }
+        exerciseSets[set.exercise_id] = (exerciseSets[set.exercise_id] || 0) + 1;
+        // Use the last completed set's weight and reps as the target
+        if (set.is_completed) {
+          if (set.weight) exerciseWeights[set.exercise_id] = set.weight;
+          if (set.reps) exerciseReps[set.exercise_id] = set.reps;
+        }
+      }
+
+      const newExercises: TemplateExerciseRequest[] = exerciseOrder.map((exerciseId, index) => ({
+        exercise_id: exerciseId,
+        order_index: index,
+        target_sets: exerciseSets[exerciseId] || 3,
+        target_reps: exerciseReps[exerciseId] || 10,
+        target_weight: exerciseWeights[exerciseId] || 0,
+      }));
+
+      await updateTemplate(workout.template_id, { exercises: newExercises });
+      setShowUpdateRoutine(false);
+      onComplete();
+    } catch (error) {
+      console.error('Failed to update routine:', error);
+      alert('Failed to update routine. Your workout was still saved.');
+      setShowUpdateRoutine(false);
+      onComplete();
+    } finally {
+      setUpdatingRoutine(false);
+    }
+  };
+
+  const handleSkipUpdate = () => {
+    setShowUpdateRoutine(false);
+    onComplete();
   };
 
   const handleSaveAsTemplate = async () => {
@@ -354,6 +521,64 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                 className="flex-1 btn btn-secondary"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Routine Modal */}
+      {showUpdateRoutine && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-md bg-gray-800 rounded-lg p-6">
+            <h3 className="text-xl font-bold mb-2">Update Routine?</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Your workout differed from the saved &quot;{workout.template_name_snapshot}&quot; routine.
+              Update it so next time it matches what you did today?
+            </p>
+
+            <div className="space-y-2 mb-5 max-h-48 overflow-y-auto">
+              {routineChanges.map((change, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span className={`mt-0.5 flex-shrink-0 ${
+                    change.type === 'added' ? 'text-green-400' :
+                    change.type === 'removed' ? 'text-red-400' :
+                    'text-yellow-400'
+                  }`}>
+                    {change.type === 'added' ? '+' :
+                     change.type === 'removed' ? '-' :
+                     '~'}
+                  </span>
+                  <div>
+                    <span className="font-medium">{change.exerciseName}</span>
+                    {change.detail && (
+                      <span className="text-gray-400 ml-1">({change.detail})</span>
+                    )}
+                    {!change.detail && (
+                      <span className="text-gray-400 ml-1">
+                        ({change.type === 'added' ? 'new exercise' :
+                          change.type === 'removed' ? 'removed' :
+                          'changed'})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleUpdateRoutine}
+                disabled={updatingRoutine}
+                className="flex-1 btn btn-primary"
+              >
+                {updatingRoutine ? 'Updating...' : 'Update Routine'}
+              </button>
+              <button
+                onClick={handleSkipUpdate}
+                className="flex-1 btn btn-secondary"
+              >
+                Keep Original
               </button>
             </div>
           </div>

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings
@@ -87,7 +87,7 @@ def update_meal_category(
     for field, value in update_data.items():
         setattr(category, field, value)
 
-    category.updated_at = datetime.utcnow()
+    category.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(category)
@@ -113,7 +113,7 @@ def delete_meal_category(
             detail="Category not found"
         )
 
-    category.deleted_at = datetime.utcnow()
+    category.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
 
@@ -205,7 +205,7 @@ def update_food(
     for field, value in update_data.items():
         setattr(food, field, value)
 
-    food.updated_at = datetime.utcnow()
+    food.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(food)
@@ -236,7 +236,7 @@ def delete_food(
             detail="Food not found or not owned by user"
         )
 
-    food.deleted_at = datetime.utcnow()
+    food.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
 
@@ -388,7 +388,7 @@ def delete_meal(
             detail="Meal not found"
         )
 
-    meal.deleted_at = datetime.utcnow()
+    meal.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
 

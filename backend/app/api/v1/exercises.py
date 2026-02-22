@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User
@@ -105,7 +105,7 @@ def update_exercise(
     for field, value in update_data.items():
         setattr(exercise, field, value)
 
-    exercise.updated_at = datetime.utcnow()
+    exercise.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(exercise)
@@ -136,6 +136,6 @@ def delete_exercise(
             detail="Exercise not found or not owned by user"
         )
 
-    exercise.deleted_at = datetime.utcnow()
+    exercise.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None

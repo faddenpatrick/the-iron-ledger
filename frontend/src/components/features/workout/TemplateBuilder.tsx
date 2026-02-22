@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Exercise } from '../../../types/workout';
-import { createTemplate } from '../../../services/workout.service';
+import React, { useState, useRef, useCallback } from 'react';
+import { Exercise, TemplateExercise, WorkoutTemplate } from '../../../types/workout';
+import { createTemplate, updateTemplate } from '../../../services/workout.service';
 import { ExerciseSelector } from './ExerciseSelector';
 
-interface TemplateExerciseData {
+export interface TemplateExerciseData {
   exercise: Exercise;
   order_index: number;
   target_sets: number;
@@ -15,16 +15,42 @@ interface TemplateExerciseData {
 interface TemplateBuilderProps {
   onClose: () => void;
   onSuccess: () => void;
+  /** Pass an existing template to edit it instead of creating new */
+  editTemplate?: WorkoutTemplate;
 }
 
 export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   onClose,
   onSuccess,
+  editTemplate,
 }) => {
-  const [templateName, setTemplateName] = useState('');
-  const [exercises, setExercises] = useState<TemplateExerciseData[]>([]);
+  const isEditing = !!editTemplate;
+
+  const [templateName, setTemplateName] = useState(editTemplate?.name || '');
+  const [exercises, setExercises] = useState<TemplateExerciseData[]>(() => {
+    if (editTemplate?.exercises) {
+      return editTemplate.exercises
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((te: TemplateExercise, i: number) => ({
+          exercise: te.exercise,
+          order_index: i,
+          target_sets: te.target_sets ?? 3,
+          target_reps: te.target_reps ?? 10,
+          target_weight: te.target_weight ?? 0,
+          notes: te.notes ?? '',
+        }));
+    }
+    return [];
+  });
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Drag state
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const touchStartY = useRef<number>(0);
+  const touchDragIndex = useRef<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const handleAddExercise = (exercise: Exercise) => {
     const newExercise: TemplateExerciseData = {
@@ -42,7 +68,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const handleUpdateExercise = (
     index: number,
     field: keyof TemplateExerciseData,
-    value: any
+    value: number | string | Exercise
   ) => {
     const updated = [...exercises];
     updated[index] = { ...updated[index], [field]: value };
@@ -51,7 +77,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   const handleRemoveExercise = (index: number) => {
     const updated = exercises.filter((_, i) => i !== index);
-    // Re-index remaining exercises
     updated.forEach((ex, i) => {
       ex.order_index = i;
     });
@@ -69,14 +94,79 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     const updated = [...exercises];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     [updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]];
-
-    // Update order_index
     updated.forEach((ex, i) => {
       ex.order_index = i;
     });
-
     setExercises(updated);
   };
+
+  // Desktop drag handlers
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDrop = useCallback((index: number) => {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...exercises];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(index, 0, moved);
+    updated.forEach((ex, i) => {
+      ex.order_index = i;
+    });
+    setExercises(updated);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragIndex, exercises]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
+  // Touch drag handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent, index: number) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchDragIndex.current = index;
+    setDragIndex(index);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchDragIndex.current === null || !listRef.current) return;
+    e.preventDefault();
+    const touchY = e.touches[0].clientY;
+    const children = listRef.current.children;
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect();
+      if (touchY >= rect.top && touchY <= rect.bottom) {
+        setDragOverIndex(i);
+        break;
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchDragIndex.current !== null && dragOverIndex !== null && touchDragIndex.current !== dragOverIndex) {
+      const updated = [...exercises];
+      const [moved] = updated.splice(touchDragIndex.current, 1);
+      updated.splice(dragOverIndex, 0, moved);
+      updated.forEach((ex, i) => {
+        ex.order_index = i;
+      });
+      setExercises(updated);
+    }
+    touchDragIndex.current = null;
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragOverIndex, exercises]);
 
   const handleSave = async () => {
     if (!templateName.trim()) {
@@ -91,23 +181,32 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
     setSaving(true);
     try {
-      await createTemplate({
-        name: templateName,
-        workout_type: 'lifting',
-        exercises: exercises.map((ex) => ({
-          exercise_id: ex.exercise.id,
-          order_index: ex.order_index,
-          target_sets: ex.target_sets,
-          target_reps: ex.target_reps,
-          target_weight: ex.target_weight,
-          notes: ex.notes || undefined,
-        })),
-      });
+      const exerciseData = exercises.map((ex) => ({
+        exercise_id: ex.exercise.id,
+        order_index: ex.order_index,
+        target_sets: ex.target_sets,
+        target_reps: ex.target_reps,
+        target_weight: ex.target_weight,
+        notes: ex.notes || undefined,
+      }));
+
+      if (isEditing && editTemplate) {
+        await updateTemplate(editTemplate.id, {
+          name: templateName,
+          exercises: exerciseData,
+        });
+      } else {
+        await createTemplate({
+          name: templateName,
+          workout_type: 'lifting',
+          exercises: exerciseData,
+        });
+      }
 
       onSuccess();
     } catch (error) {
-      console.error('Failed to create routine:', error);
-      alert('Failed to create routine');
+      console.error(`Failed to ${isEditing ? 'update' : 'create'} routine:`, error);
+      alert(`Failed to ${isEditing ? 'update' : 'create'} routine`);
     } finally {
       setSaving(false);
     }
@@ -117,7 +216,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
       <div className="w-full max-w-2xl bg-gray-800 rounded-lg p-6 my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Create Routine</h2>
+          <h2 className="text-2xl font-bold">{isEditing ? 'Edit Routine' : 'Create Routine'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl"
@@ -159,12 +258,42 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <p className="text-sm">Click &quot;Add Exercise&quot; to get started</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" ref={listRef}>
               {exercises.map((ex, index) => (
-                <div key={index} className="card bg-gray-700">
+                <div
+                  key={`${ex.exercise.id}-${index}`}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={handleDragEnd}
+                  className={`card bg-gray-700 transition-all ${
+                    dragIndex === index ? 'opacity-50 scale-95' : ''
+                  } ${
+                    dragOverIndex === index && dragIndex !== index
+                      ? 'border-2 border-primary-500'
+                      : 'border-2 border-transparent'
+                  }`}
+                >
                   <div className="flex items-start gap-3">
-                    {/* Move buttons */}
-                    <div className="flex flex-col gap-1">
+                    {/* Drag handle + move buttons */}
+                    <div className="flex flex-col items-center gap-1 pt-1">
+                      <div
+                        className="cursor-grab active:cursor-grabbing touch-none px-1 py-2 text-gray-400 hover:text-gray-200"
+                        onTouchStart={(e) => handleTouchStart(e, index)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        title="Drag to reorder"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <circle cx="5" cy="3" r="1.5"/>
+                          <circle cx="11" cy="3" r="1.5"/>
+                          <circle cx="5" cy="8" r="1.5"/>
+                          <circle cx="11" cy="8" r="1.5"/>
+                          <circle cx="5" cy="13" r="1.5"/>
+                          <circle cx="11" cy="13" r="1.5"/>
+                        </svg>
+                      </div>
                       <button
                         onClick={() => handleMoveExercise(index, 'up')}
                         disabled={index === 0}
@@ -278,7 +407,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             disabled={saving || !templateName || exercises.length === 0}
             className="flex-1 btn btn-primary"
           >
-            {saving ? 'Saving...' : 'Create Routine'}
+            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Routine'}
           </button>
           <button onClick={onClose} className="flex-1 btn btn-secondary">
             Cancel

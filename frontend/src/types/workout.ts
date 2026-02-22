@@ -83,17 +83,25 @@ export interface WorkoutList {
   created_at: string;
 }
 
+export interface TemplateExerciseRequest {
+  exercise_id: string;
+  order_index: number;
+  target_sets?: number;
+  target_reps?: number;
+  target_weight?: number;
+  notes?: string;
+}
+
 export interface CreateTemplateRequest {
   name: string;
   workout_type?: WorkoutType;
-  exercises: {
-    exercise_id: string;
-    order_index: number;
-    target_sets?: number;
-    target_reps?: number;
-    target_weight?: number;
-    notes?: string;
-  }[];
+  exercises: TemplateExerciseRequest[];
+}
+
+export interface UpdateTemplateRequest {
+  name?: string;
+  workout_type?: WorkoutType;
+  exercises?: TemplateExerciseRequest[];
 }
 
 export interface CreateWorkoutRequest {

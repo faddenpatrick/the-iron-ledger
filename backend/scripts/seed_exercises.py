@@ -1,6 +1,6 @@
 """Seed exercise database with comprehensive home gym exercises."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.exercise import Exercise
 
@@ -307,7 +307,7 @@ def seed_exercises(db: Session):
     else:
         print(f"Seeding {len(EXERCISES)} exercises...")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for exercise_data in new_exercises:
         exercise = Exercise(
             id=uuid.uuid4(),
