@@ -1,7 +1,7 @@
 """User models."""
 import uuid
-from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Boolean
+from datetime import datetime, timezone, date as date_type
+from sqlalchemy import Column, String, DateTime, Date, Text, ForeignKey, Integer, Float, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from ..database import Base
@@ -53,8 +53,27 @@ class UserSettings(Base):
     macro_percentage_carbs = Column(Integer, nullable=True)  # 0-100
     macro_percentage_fat = Column(Integer, nullable=True)  # 0-100
 
+    # AI Coach
+    coach_type = Column(String(50), default="arnold", nullable=False)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="settings")
+
+
+class CoachInsight(Base):
+    """Cached AI coach insights — one per user per day."""
+
+    __tablename__ = "coach_insights"
+    __table_args__ = (
+        UniqueConstraint("user_id", "insight_date", name="uq_coach_insights_user_date"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    coach_type = Column(String(50), nullable=False)
+    insight = Column(Text, nullable=False)
+    insight_date = Column(Date, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

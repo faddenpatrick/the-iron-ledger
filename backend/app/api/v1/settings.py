@@ -11,6 +11,9 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+VALID_COACHES = ["arnold", "jay_cutler", "endurance", "wellness"]
+
+
 class UserSettingsResponse(BaseModel):
     """User settings response schema."""
     theme: str
@@ -24,6 +27,7 @@ class UserSettingsResponse(BaseModel):
     macro_percentage_protein: Optional[int]
     macro_percentage_carbs: Optional[int]
     macro_percentage_fat: Optional[int]
+    coach_type: str
 
     class Config:
         from_attributes = True
@@ -42,6 +46,7 @@ class UpdateUserSettingsRequest(BaseModel):
     macro_percentage_protein: Optional[int] = None
     macro_percentage_carbs: Optional[int] = None
     macro_percentage_fat: Optional[int] = None
+    coach_type: Optional[str] = None
 
 
 @router.get("/settings", response_model=UserSettingsResponse)
@@ -97,6 +102,11 @@ def update_user_settings(
         if request.default_rest_timer < 0 or request.default_rest_timer > 600:
             raise HTTPException(status_code=400, detail="Rest timer must be between 0 and 600 seconds")
         settings.default_rest_timer = request.default_rest_timer
+
+    if request.coach_type is not None:
+        if request.coach_type not in VALID_COACHES:
+            raise HTTPException(status_code=400, detail=f"Coach type must be one of: {', '.join(VALID_COACHES)}")
+        settings.coach_type = request.coach_type
 
     # Handle macro input mode
     if request.macro_input_mode is not None:

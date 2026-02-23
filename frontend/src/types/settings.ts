@@ -10,6 +10,7 @@ export interface UserSettings {
   macro_percentage_protein: number | null;
   macro_percentage_carbs: number | null;
   macro_percentage_fat: number | null;
+  coach_type: string;
 }
 
 export interface UpdateUserSettingsRequest {
@@ -24,4 +25,5 @@ export interface UpdateUserSettingsRequest {
   macro_percentage_protein?: number | null;
   macro_percentage_carbs?: number | null;
   macro_percentage_fat?: number | null;
+  coach_type?: string;
 }

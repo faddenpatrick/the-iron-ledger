@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .api.v1 import auth, exercises, workouts, nutrition, settings as settings_router, openfoodfacts
+from .api.v1 import auth, exercises, workouts, nutrition, settings as settings_router, openfoodfacts, coaching
 from .database import SessionLocal
 from scripts.seed_exercises import seed_exercises
 
@@ -28,6 +28,7 @@ app.include_router(workouts.router, prefix="/api/v1/workouts", tags=["Workouts"]
 app.include_router(nutrition.router, prefix="/api/v1/nutrition", tags=["Nutrition"])
 app.include_router(settings_router.router, prefix="/api/v1/user", tags=["User Settings"])
 app.include_router(openfoodfacts.router, prefix="/api/v1/openfoodfacts", tags=["Open Food Facts"])
+app.include_router(coaching.router, prefix="/api/v1", tags=["AI Coaching"])
 
 
 @app.get("/")

@@ -9,6 +9,7 @@ import {
   gramsToPercentage,
   validatePercentageSum,
 } from '../utils/macroCalculations';
+import { COACH_OPTIONS } from '../types/coaching';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -45,6 +46,9 @@ export const SettingsPage: React.FC = () => {
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Coach state
+  const [coachType, setCoachType] = useState('arnold');
 
   // Macro mode state
   const [macroMode, setMacroMode] = useState<'grams' | 'percentage'>('grams');
@@ -151,6 +155,7 @@ export const SettingsPage: React.FC = () => {
       setProtein(settings.macro_target_protein?.toString() || '');
       setCarbs(settings.macro_target_carbs?.toString() || '');
       setFat(settings.macro_target_fat?.toString() || '');
+      setCoachType(settings.coach_type || 'arnold');
       setMacroMode(settings.macro_input_mode || 'grams');
       setProteinPct(settings.macro_percentage_protein?.toString() || '');
       setCarbsPct(settings.macro_percentage_carbs?.toString() || '');
@@ -481,6 +486,68 @@ export const SettingsPage: React.FC = () => {
             className="btn btn-primary w-full"
           >
             {saving ? 'Saving...' : 'Save Preferences'}
+          </button>
+        </div>
+
+        {/* AI Coach */}
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-2">AI Coach</h3>
+          <p className="text-sm text-gray-400 mb-4">
+            Choose your coaching style. Your coach gives you daily insights on the dashboard based on your workout and nutrition data.
+          </p>
+
+          <div className="space-y-2">
+            {COACH_OPTIONS.map((coach) => (
+              <button
+                key={coach.key}
+                onClick={() => setCoachType(coach.key)}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  coachType === coach.key
+                    ? 'border-primary-500 bg-primary-600/15'
+                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">{coach.icon}</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${
+                          coachType === coach.key ? 'text-primary-300' : 'text-gray-200'
+                        }`}>
+                          {coach.name}
+                        </span>
+                        <span className="text-xs text-gray-500">{coach.title}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{coach.philosophy}</p>
+                    </div>
+                  </div>
+                  {coachType === coach.key && (
+                    <svg className="w-5 h-5 text-primary-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await updateSettings({ coach_type: coachType });
+                alert('Coach preference saved!');
+              } catch {
+                alert('Failed to save coach preference');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="btn btn-primary w-full mt-4"
+          >
+            {saving ? 'Saving...' : 'Save Coach Preference'}
           </button>
         </div>
 

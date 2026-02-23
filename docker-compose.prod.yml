@@ -31,7 +31,7 @@ services:
     container_name: healthapp_backend
     restart: unless-stopped
     labels:
-      - "com.centurylinklabs.watchtower.scope=healthapp"
+      - "com.centurylinklabs.watchtower.enable=true"
     environment:
       # Database
       DATABASE_HOST: db
@@ -78,7 +78,7 @@ services:
     container_name: healthapp_frontend
     restart: unless-stopped
     labels:
-      - "com.centurylinklabs.watchtower.scope=healthapp"
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "80:80"
     networks:
@@ -91,23 +91,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-
-  # Watchtower - auto-updates containers when new images are pushed to GHCR
-  watchtower:
-    image: containrrr/watchtower
-    container_name: healthapp_watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /home/patrick/.docker/config.json:/config.json:ro
-    command: --scope healthapp
-    environment:
-      DOCKER_API_VERSION: "1.44"
-      WATCHTOWER_POLL_INTERVAL: 300
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_INCLUDE_STOPPED: "false"
-    networks:
-      - healthapp_network
 
   # Nginx Reverse Proxy (Optional - for production with domain)
   nginx:

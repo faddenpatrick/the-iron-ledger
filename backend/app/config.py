@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # AI Coach
+    GEMINI_API_KEY: str = ""
+
     # CORS
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
