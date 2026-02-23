@@ -98,7 +98,7 @@ export const SupplementsTab: React.FC = () => {
       {/* Date Navigation */}
       <DateNavigation selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
-      <div className="mt-4">
+      <div className="max-w-7xl mx-auto px-4 py-4">
         {loading ? (
           <div className="card text-center py-8">
             <div className="text-gray-400">Loading supplements...</div>

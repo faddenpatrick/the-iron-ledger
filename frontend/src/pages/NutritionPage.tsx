@@ -47,85 +47,85 @@ export const NutritionPage: React.FC = () => {
     <div className="min-h-screen pb-20">
       <Header title="Nutrition" />
 
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        {/* Tab Bar */}
-        <div className="flex gap-3 mb-4">
+      {/* Tab Bar */}
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-2">
+        <div className="flex gap-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-lg transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
                 activeTab === tab.id
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}
             >
-              <span className="text-2xl">{tab.icon}</span>
+              <span>{tab.icon}</span>
               <span>{tab.label}</span>
             </button>
           ))}
         </div>
-
-        {/* Diet Tab */}
-        {activeTab === 'diet' && (
-          <>
-            {/* Date Navigation */}
-            <DateNavigation selectedDate={selectedDate} onDateChange={setSelectedDate} />
-
-            {/* View Mode Toggle */}
-            <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
-
-            <div className="space-y-6 mt-4">
-              {viewMode === 'today' ? (
-                <>
-                  {/* Macro Summary */}
-                  {loading ? (
-                    <div className="card text-center py-8">
-                      <div className="text-gray-400">Loading nutrition data...</div>
-                    </div>
-                  ) : summary ? (
-                    <MacroSummary summary={summary} />
-                  ) : null}
-
-                  {/* Category Selector */}
-                  <div className="card">
-                    <h3 className="text-lg font-semibold mb-3">Select Meal</h3>
-                    <CategorySelector
-                      selectedCategoryId={selectedCategoryId}
-                      onSelectCategory={setSelectedCategoryId}
-                    />
-                  </div>
-
-                  {/* Meal Logger */}
-                  {selectedCategoryId && (
-                    <MealLogger
-                      categoryId={selectedCategoryId}
-                      categoryName={getCategoryName()}
-                      date={selectedDate}
-                      onMealLogged={handleMealLogged}
-                    />
-                  )}
-
-                  {/* Daily Meals */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">{dateHeading}</h3>
-                    <DailyMealList date={selectedDate} onMealDeleted={handleMealLogged} />
-                  </div>
-                </>
-              ) : (
-                /* Weekly Summary View */
-                <WeeklySummary summary={weeklySummary} loading={weeklyLoading} />
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Measurements Tab */}
-        {activeTab === 'measurements' && <MeasurementsTab />}
-
-        {/* Supplements Tab */}
-        {activeTab === 'supplements' && <SupplementsTab />}
       </div>
+
+      {/* Diet Tab */}
+      {activeTab === 'diet' && (
+        <>
+          <DateNavigation selectedDate={selectedDate} onDateChange={setSelectedDate} />
+          <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
+
+          <div className="max-w-7xl mx-auto px-4 py-4 space-y-6">
+            {viewMode === 'today' ? (
+              <>
+                {/* Macro Summary */}
+                {loading ? (
+                  <div className="card text-center py-8">
+                    <div className="text-gray-400">Loading nutrition data...</div>
+                  </div>
+                ) : summary ? (
+                  <MacroSummary summary={summary} />
+                ) : null}
+
+                {/* Category Selector */}
+                <div className="card">
+                  <h3 className="text-lg font-semibold mb-3">Select Meal</h3>
+                  <CategorySelector
+                    selectedCategoryId={selectedCategoryId}
+                    onSelectCategory={setSelectedCategoryId}
+                  />
+                </div>
+
+                {/* Meal Logger */}
+                {selectedCategoryId && (
+                  <MealLogger
+                    categoryId={selectedCategoryId}
+                    categoryName={getCategoryName()}
+                    date={selectedDate}
+                    onMealLogged={handleMealLogged}
+                  />
+                )}
+
+                {/* Daily Meals */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">{dateHeading}</h3>
+                  <DailyMealList date={selectedDate} onMealDeleted={handleMealLogged} />
+                </div>
+              </>
+            ) : (
+              <WeeklySummary summary={weeklySummary} loading={weeklyLoading} />
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Measurements Tab */}
+      {activeTab === 'measurements' && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <MeasurementsTab />
+        </div>
+      )}
+
+      {/* Supplements Tab */}
+      {activeTab === 'supplements' && <SupplementsTab />}
     </div>
   );
 };
