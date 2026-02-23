@@ -159,9 +159,8 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
             detail="AI coaching is not configured. GEMINI_API_KEY is missing."
         )
 
-    import google.generativeai as genai
-
-    genai.configure(api_key=app_settings.GEMINI_API_KEY)
+    from google import genai
+    from google.genai import types
 
     coach = get_coach(coach_type)
     system_prompt = coach["system_prompt"]
@@ -172,11 +171,14 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
     )
 
     try:
-        model = genai.GenerativeModel(
-            "gemini-2.0-flash",
-            system_instruction=system_prompt,
+        client = genai.Client(api_key=app_settings.GEMINI_API_KEY)
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+            ),
         )
-        response = await model.generate_content_async(user_prompt)
         return response.text.strip()
     except Exception as e:
         raise HTTPException(
