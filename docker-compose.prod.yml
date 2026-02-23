@@ -53,6 +53,9 @@ services:
 
       # CORS
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://localhost:80","http://192.168.1.44","http://192.168.1.44:80","https://ilobster.tail8d808.ts.net:8082","https://ilobster.tail8d808.ts.net:8000","https://ilobster.tail8d808.ts.net"]}
+
+      # AI Coach
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
