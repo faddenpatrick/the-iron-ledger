@@ -181,6 +181,16 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
         )
         return response.text.strip()
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Gemini API error: {type(e).__name__}: {e}")
+
+        error_str = str(e).lower()
+        if "quota" in error_str or "resource_exhausted" in error_str or "429" in error_str:
+            raise HTTPException(
+                status_code=503,
+                detail="AI coaching quota exceeded. Please check your Gemini API billing."
+            )
         raise HTTPException(
             status_code=503,
             detail=f"Failed to generate coaching insight: {str(e)}"
