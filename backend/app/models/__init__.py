@@ -3,6 +3,7 @@ from .user import User, UserSettings
 from .exercise import Exercise, WorkoutTemplate, TemplateExercise
 from .workout import Workout, Set
 from .nutrition import MealCategory, Food, Meal, MealItem
+from .supplement import Supplement, SupplementLog
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "Food",
     "Meal",
     "MealItem",
+    "Supplement",
+    "SupplementLog",
 ]

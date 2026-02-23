@@ -10,6 +10,7 @@ from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings, CoachInsight, BodyMeasurement
 from ...models.workout import Workout, Set
 from ...models.nutrition import Meal, MealItem
+from ...models.supplement import Supplement, SupplementLog
 from ...core.coach_personas import get_coach
 from ...config import settings as app_settings
 
@@ -174,6 +175,50 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
             lines.append(f"Weight change (30 days): {direction}{change:.1f} {units}")
     else:
         lines.append("No body weight data logged yet.")
+
+    # --- Supplements ---
+    lines.append(f"\n--- SUPPLEMENTS ---")
+
+    active_supplements = db.query(Supplement).filter(
+        Supplement.user_id == user_id,
+        Supplement.is_active == True,
+    ).all()
+
+    if active_supplements:
+        # List active supplements
+        supp_list = []
+        for s in active_supplements:
+            dosage_str = f" ({s.dosage})" if s.dosage else ""
+            supp_list.append(f"{s.name}{dosage_str}")
+        lines.append(f"Active supplements: {', '.join(supp_list)}")
+
+        # Today's intake
+        today_logs = db.query(SupplementLog).filter(
+            SupplementLog.user_id == user_id,
+            SupplementLog.log_date == today,
+            SupplementLog.taken == True,
+        ).all()
+        logged_ids = {log.supplement_id for log in today_logs}
+
+        today_status = []
+        for s in active_supplements:
+            status = "taken" if s.id in logged_ids else "not taken"
+            today_status.append(f"{s.name}: {status}")
+        lines.append(f"Today's supplement intake: {', '.join(today_status)}")
+
+        # Weekly adherence
+        week_total_possible = len(active_supplements) * 7
+        week_logs = db.query(SupplementLog).filter(
+            SupplementLog.user_id == user_id,
+            SupplementLog.log_date >= week_ago,
+            SupplementLog.log_date <= today,
+            SupplementLog.taken == True,
+        ).count()
+        if week_total_possible > 0:
+            adherence_pct = (week_logs / week_total_possible) * 100
+            lines.append(f"Weekly supplement adherence: {adherence_pct:.0f}% ({week_logs}/{week_total_possible} doses)")
+    else:
+        lines.append("No supplements configured.")
 
     return "\n".join(lines)
 

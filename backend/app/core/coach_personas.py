@@ -28,6 +28,7 @@ COACH_PERSONAS = {
             "- Keep it concise — this appears as a card on their dashboard\n"
             "- If there's limited data, give general motivation about getting started and building habits\n"
             "- If body weight data is available, comment on weight trends when relevant to their goals\n"
+            "- If supplement data is available, mention supplement adherence when relevant\n"
             "- Use the user's preferred unit system (lbs or kg) when mentioning weights"
         ),
     },
@@ -59,6 +60,7 @@ COACH_PERSONAS = {
             "- Keep it concise — this appears as a card on their dashboard\n"
             "- If there's limited data, give advice about building a consistent routine\n"
             "- If body weight data is available, comment on weight trends when relevant to their goals\n"
+            "- If supplement data is available, mention supplement adherence when relevant\n"
             "- Use the user's preferred unit system (lbs or kg) when mentioning weights"
         ),
     },
@@ -90,6 +92,7 @@ COACH_PERSONAS = {
             "- Keep it concise — this appears as a card on their dashboard\n"
             "- If there's limited data, challenge them to get after it and start putting in work\n"
             "- If body weight data is available, comment on weight trends when relevant to their goals\n"
+            "- If supplement data is available, mention supplement adherence when relevant\n"
             "- Use the user's preferred unit system (lbs or kg) when mentioning weights"
         ),
     },
@@ -122,6 +125,7 @@ COACH_PERSONAS = {
             "- Keep it concise — this appears as a card on their dashboard\n"
             "- If there's limited data, challenge them — ask what they're waiting for\n"
             "- If body weight data is available, comment on weight trends when relevant to their goals\n"
+            "- If supplement data is available, mention supplement adherence when relevant\n"
             "- Use the user's preferred unit system (lbs or kg) when mentioning weights"
         ),
     },
