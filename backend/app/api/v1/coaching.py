@@ -173,7 +173,7 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
     try:
         client = genai.Client(api_key=app_settings.GEMINI_API_KEY)
         response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
