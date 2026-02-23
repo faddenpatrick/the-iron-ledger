@@ -11,7 +11,7 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
-VALID_COACHES = ["arnold", "jay_cutler", "endurance", "wellness"]
+VALID_COACHES = ["arnold", "jay_cutler", "cam_hanes", "goggins"]
 
 
 class UserSettingsResponse(BaseModel):

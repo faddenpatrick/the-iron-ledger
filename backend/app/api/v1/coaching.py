@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ...api.deps import get_db, get_current_user
-from ...models.user import User, UserSettings, CoachInsight
+from ...models.user import User, UserSettings, CoachInsight, BodyMeasurement
 from ...models.workout import Workout, Set
 from ...models.nutrition import Meal, MealItem
 from ...core.coach_personas import get_coach
@@ -147,6 +147,33 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
             targets.append(f"Fat: {user_settings.macro_target_fat}g")
         if targets:
             lines.append(f"\nUser's daily macro targets: {', '.join(targets)}")
+
+    # --- Body measurements ---
+    lines.append(f"\n--- BODY MEASUREMENTS ---")
+
+    latest_measurement = db.query(BodyMeasurement).filter(
+        BodyMeasurement.user_id == user_id,
+        BodyMeasurement.weight.isnot(None),
+    ).order_by(BodyMeasurement.measurement_date.desc()).first()
+
+    if latest_measurement:
+        lines.append(f"Current weight: {latest_measurement.weight} {units} (logged {latest_measurement.measurement_date})")
+
+        # Look for a measurement from ~30 days ago
+        thirty_days_ago = today - timedelta(days=30)
+        old_measurement = db.query(BodyMeasurement).filter(
+            BodyMeasurement.user_id == user_id,
+            BodyMeasurement.weight.isnot(None),
+            BodyMeasurement.measurement_date <= thirty_days_ago,
+        ).order_by(BodyMeasurement.measurement_date.desc()).first()
+
+        if old_measurement:
+            change = latest_measurement.weight - old_measurement.weight
+            direction = "+" if change > 0 else ""
+            lines.append(f"Weight {old_measurement.measurement_date}: {old_measurement.weight} {units}")
+            lines.append(f"Weight change (30 days): {direction}{change:.1f} {units}")
+    else:
+        lines.append("No body weight data logged yet.")
 
     return "\n".join(lines)
 

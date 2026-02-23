@@ -26,6 +26,7 @@ class User(Base):
     meal_categories = relationship("MealCategory", back_populates="user", cascade="all, delete-orphan")
     foods = relationship("Food", back_populates="user", cascade="all, delete-orphan")
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
+    body_measurements = relationship("BodyMeasurement", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSettings(Base):
@@ -77,3 +78,23 @@ class CoachInsight(Base):
     insight = Column(Text, nullable=False)
     insight_date = Column(Date, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class BodyMeasurement(Base):
+    """Body measurements — one entry per user per day, extensible for future measurement types."""
+
+    __tablename__ = "body_measurements"
+    __table_args__ = (
+        UniqueConstraint("user_id", "measurement_date", name="uq_body_measurements_user_date"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    measurement_date = Column(Date, nullable=False)
+    weight = Column(Float, nullable=True)  # in user's preferred units (lbs or kg)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="body_measurements")
