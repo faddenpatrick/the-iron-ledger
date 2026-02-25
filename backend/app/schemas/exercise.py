@@ -45,6 +45,7 @@ class TemplateExerciseBase(BaseModel):
     target_reps: Optional[int] = None
     target_weight: Optional[float] = None
     notes: Optional[str] = None
+    tally_mode: bool = False
 
 
 class TemplateExerciseCreate(TemplateExerciseBase):

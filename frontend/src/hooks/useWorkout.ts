@@ -95,6 +95,38 @@ export const useWorkout = (workoutId: string | null) => {
     }
   };
 
+  const logTallyReps = async (exerciseId: string, reps: number) => {
+    if (!workoutId || !workout) return;
+
+    const existingSets = workout.sets.filter((s) => s.exercise_id === exerciseId);
+    const setNumber = existingSets.length + 1;
+
+    try {
+      const newSet = await addSet(workoutId, {
+        exercise_id: exerciseId,
+        set_number: setNumber,
+        reps,
+      });
+
+      const completedSet = await updateSet(workoutId, newSet.id, {
+        is_completed: true,
+      });
+
+      setWorkout((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sets: [...prev.sets, completedSet],
+        };
+      });
+
+      return completedSet;
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to log tally reps');
+      throw err;
+    }
+  };
+
   return {
     workout,
     loading,
@@ -103,5 +135,6 @@ export const useWorkout = (workoutId: string | null) => {
     addNewSet,
     updateExistingSet,
     removeSet,
+    logTallyReps,
   };
 };

@@ -112,6 +112,7 @@ class PreviousPerformanceResponse(BaseModel):
     has_previous: bool
     previous_workout_date: Optional[date]
     previous_sets: List[PreviousSetData] = []
+    previous_total_reps: Optional[int] = None
 
 
 class WorkoutWeeklyStatsResponse(BaseModel):

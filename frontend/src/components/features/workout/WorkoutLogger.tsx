@@ -12,6 +12,7 @@ import {
 } from '../../../services/workout.service';
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetRow } from './SetRow';
+import { TallyExercise } from './TallyExercise';
 import { RestTimer } from './RestTimer';
 import { PRBadge } from './PRBadge';
 
@@ -39,7 +40,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   onComplete,
   onCancel,
 }) => {
-  const { workout, loading, addNewSet, updateExistingSet, removeSet } = useWorkout(workoutId);
+  const { workout, loading, addNewSet, updateExistingSet, removeSet, logTallyReps } = useWorkout(workoutId);
   const restTimer = useRestTimer(60);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -50,6 +51,31 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const [showUpdateRoutine, setShowUpdateRoutine] = useState(false);
   const [routineChanges, setRoutineChanges] = useState<RoutineChange[]>([]);
   const [updatingRoutine, setUpdatingRoutine] = useState(false);
+  const [templateExerciseMap, setTemplateExerciseMap] = useState<
+    Record<string, { tally_mode: boolean; target_reps: number | null; exercise_name: string }>
+  >({});
+
+  // Fetch template metadata for tally mode info
+  useEffect(() => {
+    const fetchTemplateMetadata = async () => {
+      if (!workout?.template_id) return;
+      try {
+        const template = await getTemplate(workout.template_id);
+        const map: Record<string, { tally_mode: boolean; target_reps: number | null; exercise_name: string }> = {};
+        for (const te of template.exercises) {
+          map[te.exercise_id] = {
+            tally_mode: te.tally_mode,
+            target_reps: te.target_reps,
+            exercise_name: te.exercise.name,
+          };
+        }
+        setTemplateExerciseMap(map);
+      } catch (error) {
+        console.error('Failed to fetch template metadata:', error);
+      }
+    };
+    fetchTemplateMetadata();
+  }, [workout?.template_id]);
 
   // Group sets by exercise
   const exerciseGroups = workout?.sets.reduce((acc, set) => {
@@ -65,7 +91,19 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     return acc;
   }, {} as Record<string, { exerciseId: string; exerciseName: string; sets: any[] }>);
 
-  const exercises = exerciseGroups ? Object.values(exerciseGroups) : [];
+  // Include tally exercises from template that have 0 sets yet
+  const allGroups = { ...(exerciseGroups || {}) };
+  for (const [exerciseId, meta] of Object.entries(templateExerciseMap)) {
+    if (meta.tally_mode && !allGroups[exerciseId]) {
+      allGroups[exerciseId] = {
+        exerciseId,
+        exerciseName: meta.exercise_name,
+        sets: [],
+      };
+    }
+  }
+
+  const exercises = Object.values(allGroups);
 
   // Fetch previous performance for all exercises when workout loads
   useEffect(() => {
@@ -239,9 +277,26 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         });
       }
 
-      // Check for set count changes
+      // Check for set count and tally rep changes
       for (const te of templateExercises) {
         if (!workoutExerciseOrder.includes(te.exercise_id)) continue;
+
+        if (te.tally_mode) {
+          // Tally mode: compare total reps completed vs target
+          const totalReps = workout.sets
+            .filter((s) => s.exercise_id === te.exercise_id && s.is_completed)
+            .reduce((sum, s) => sum + (s.reps || 0), 0);
+          const targetReps = te.target_reps ?? 50;
+          if (totalReps !== targetReps && totalReps > 0) {
+            changes.push({
+              type: 'sets_changed',
+              exerciseName: te.exercise.name,
+              detail: `${targetReps} rep target → ${totalReps} reps completed`,
+            });
+          }
+          continue;
+        }
+
         const templateSets = te.target_sets ?? 3;
         const workoutSetCount = workoutExerciseSets[te.exercise_id] || 0;
         if (workoutSetCount !== templateSets) {
@@ -253,9 +308,10 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         }
       }
 
-      // Check for significant weight changes
+      // Check for significant weight changes (skip tally exercises)
       for (const te of templateExercises) {
         if (!workoutExerciseOrder.includes(te.exercise_id)) continue;
+        if (te.tally_mode) continue;
         const templateWeight = te.target_weight ?? 0;
         const workoutWeight = workoutExerciseWeights[te.exercise_id] ?? 0;
         if (workoutWeight > 0 && templateWeight !== workoutWeight) {
@@ -319,13 +375,30 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         }
       }
 
-      const newExercises: TemplateExerciseRequest[] = exerciseOrder.map((exerciseId, index) => ({
-        exercise_id: exerciseId,
-        order_index: index,
-        target_sets: exerciseSets[exerciseId] || 3,
-        target_reps: exerciseReps[exerciseId] || 10,
-        target_weight: exerciseWeights[exerciseId] || 0,
-      }));
+      const newExercises: TemplateExerciseRequest[] = exerciseOrder.map((exerciseId, index) => {
+        const meta = templateExerciseMap[exerciseId];
+        if (meta?.tally_mode) {
+          const totalReps = workout.sets
+            .filter((s) => s.exercise_id === exerciseId && s.is_completed)
+            .reduce((sum, s) => sum + (s.reps || 0), 0);
+          return {
+            exercise_id: exerciseId,
+            order_index: index,
+            target_sets: 0,
+            target_reps: totalReps || meta.target_reps || 50,
+            target_weight: 0,
+            tally_mode: true,
+          };
+        }
+        return {
+          exercise_id: exerciseId,
+          order_index: index,
+          target_sets: exerciseSets[exerciseId] || 3,
+          target_reps: exerciseReps[exerciseId] || 10,
+          target_weight: exerciseWeights[exerciseId] || 0,
+          tally_mode: false,
+        };
+      });
 
       await updateTemplate(workout.template_id, { exercises: newExercises });
       setShowUpdateRoutine(false);
@@ -410,44 +483,66 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       {/* Exercises and Sets */}
       <div className="space-y-6">
         {exercises.map((group) => {
-          const best1RM = getBest1RM(group.exerciseId);
-          const isPersonalRecord = isPR(group.exerciseId);
+          const tallyMeta = templateExerciseMap[group.exerciseId];
+          const isTallyMode = tallyMeta?.tally_mode === true;
+          const best1RM = isTallyMode ? 0 : getBest1RM(group.exerciseId);
+          const isPersonalRecord = isTallyMode ? false : isPR(group.exerciseId);
 
           return (
             <div key={group.exerciseId} className="card">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-lg">{group.exerciseName}</h3>
                 <div className="flex items-center gap-2">
-                  {best1RM > 0 && (
+                  {!isTallyMode && best1RM > 0 && (
                     <div className="text-sm text-gray-400">
                       Est. 1RM: <span className="font-semibold text-white">{best1RM.toFixed(1)} lbs</span>
                     </div>
                   )}
-                  <PRBadge isPersonalRecord={isPersonalRecord} />
+                  {!isTallyMode && <PRBadge isPersonalRecord={isPersonalRecord} />}
                 </div>
               </div>
-              <div className="space-y-2 mb-3">
-              {group.sets
-                .sort((a, b) => a.set_number - b.set_number)
-                .map((set, index) => (
-                  <SetRow
-                    key={set.id}
-                    set={set}
-                    setNumber={index + 1}
-                    previousData={getPreviousSetData(group.exerciseId, index + 1)}
-                    onUpdate={(data) => updateExistingSet(set.id, data)}
-                    onComplete={() => restTimer.start()}
-                    onDelete={() => removeSet(set.id)}
-                  />
-                ))}
+
+              {isTallyMode ? (
+                <TallyExercise
+                  exerciseId={group.exerciseId}
+                  exerciseName={group.exerciseName}
+                  targetReps={tallyMeta?.target_reps || 50}
+                  sets={group.sets}
+                  previousTotalReps={previousPerformance[group.exerciseId]?.previous_total_reps ?? null}
+                  previousWorkoutDate={previousPerformance[group.exerciseId]?.previous_workout_date ?? null}
+                  onLogReps={(reps) => logTallyReps(group.exerciseId, reps)}
+                  onUndoLast={() => {
+                    const sortedSets = [...group.sets].sort((a, b) => a.set_number - b.set_number);
+                    const lastSet = sortedSets[sortedSets.length - 1];
+                    if (lastSet) removeSet(lastSet.id);
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="space-y-2 mb-3">
+                    {group.sets
+                      .sort((a, b) => a.set_number - b.set_number)
+                      .map((set, index) => (
+                        <SetRow
+                          key={set.id}
+                          set={set}
+                          setNumber={index + 1}
+                          previousData={getPreviousSetData(group.exerciseId, index + 1)}
+                          onUpdate={(data) => updateExistingSet(set.id, data)}
+                          onComplete={() => restTimer.start()}
+                          onDelete={() => removeSet(set.id)}
+                        />
+                      ))}
+                  </div>
+                  <button
+                    onClick={() => handleAddSet(group.exerciseId)}
+                    className="w-full btn btn-secondary"
+                  >
+                    + Add Set
+                  </button>
+                </>
+              )}
             </div>
-            <button
-              onClick={() => handleAddSet(group.exerciseId)}
-              className="w-full btn btn-secondary"
-            >
-              + Add Set
-            </button>
-          </div>
           );
         })}
       </div>

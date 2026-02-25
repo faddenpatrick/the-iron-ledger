@@ -20,6 +20,7 @@ export interface TemplateExercise {
   target_reps: number | null;
   target_weight: number | null;
   notes: string | null;
+  tally_mode: boolean;
   exercise: Exercise;
 }
 
@@ -90,6 +91,7 @@ export interface TemplateExerciseRequest {
   target_reps?: number;
   target_weight?: number;
   notes?: string;
+  tally_mode?: boolean;
 }
 
 export interface CreateTemplateRequest {
@@ -140,6 +142,7 @@ export interface PreviousPerformance {
   has_previous: boolean;
   previous_workout_date: string | null;
   previous_sets: PreviousSetData[];
+  previous_total_reps: number | null;
 }
 
 export interface WorkoutWeeklyStats {

@@ -411,6 +411,7 @@ export const getPreviousPerformance = async (
       has_previous: false,
       previous_workout_date: null,
       previous_sets: [],
+      previous_total_reps: null,
     };
   }
 };

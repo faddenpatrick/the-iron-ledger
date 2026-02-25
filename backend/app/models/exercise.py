@@ -63,6 +63,7 @@ class TemplateExercise(Base):
     target_reps = Column(Integer, nullable=True)
     target_weight = Column(Integer, nullable=True)  # Target weight in lbs
     notes = Column(Text, nullable=True)
+    tally_mode = Column(Boolean, default=False, nullable=False)  # Tally mode: target_reps = total rep target
 
     # Relationships
     template = relationship("WorkoutTemplate", back_populates="exercises")

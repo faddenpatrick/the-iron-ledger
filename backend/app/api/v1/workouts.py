@@ -259,6 +259,10 @@ def create_workout(
     # If using a template, create sets from template exercises
     if template:
         for template_exercise in template.exercises:
+            # Tally mode exercises start with zero sets — user adds them via taps
+            if template_exercise.tally_mode:
+                continue
+
             target_sets = template_exercise.target_sets or 3
             target_reps = template_exercise.target_reps or 10
             target_weight = template_exercise.target_weight or 0
@@ -577,11 +581,14 @@ def get_previous_performance(
         for s in previous_sets
     ]
 
+    total_reps = sum(s.reps or 0 for s in previous_sets)
+
     return PreviousPerformanceResponse(
         exercise_id=exercise_id,
         has_previous=True,
         previous_workout_date=previous_workout.workout_date,
-        previous_sets=set_data
+        previous_sets=set_data,
+        previous_total_reps=total_reps
     )
 
 

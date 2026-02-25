@@ -10,6 +10,7 @@ export interface TemplateExerciseData {
   target_reps: number;
   target_weight: number;
   notes: string;
+  tally_mode: boolean;
 }
 
 interface TemplateBuilderProps {
@@ -38,6 +39,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           target_reps: te.target_reps ?? 10,
           target_weight: te.target_weight ?? 0,
           notes: te.notes ?? '',
+          tally_mode: te.tally_mode ?? false,
         }));
     }
     return [];
@@ -60,6 +62,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       target_reps: 10,
       target_weight: 0,
       notes: '',
+      tally_mode: false,
     };
     setExercises([...exercises, newExercise]);
     setShowExerciseSelector(false);
@@ -68,10 +71,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const handleUpdateExercise = (
     index: number,
     field: keyof TemplateExerciseData,
-    value: number | string | Exercise
+    value: number | string | boolean | Exercise
   ) => {
     const updated = [...exercises];
     updated[index] = { ...updated[index], [field]: value };
+    setExercises(updated);
+  };
+
+  const handleToggleTallyMode = (index: number) => {
+    const ex = exercises[index];
+    const updated = [...exercises];
+
+    if (!ex.tally_mode) {
+      // Switching TO tally: convert per-set reps to total target
+      const totalTarget = (ex.target_sets || 3) * (ex.target_reps || 10);
+      updated[index] = {
+        ...ex,
+        tally_mode: true,
+        target_reps: totalTarget,
+        target_sets: 0,
+        target_weight: 0,
+      };
+    } else {
+      // Switching FROM tally: convert total target to per-set reps
+      const perSetReps = Math.round((ex.target_reps || 50) / 3);
+      updated[index] = {
+        ...ex,
+        tally_mode: false,
+        target_sets: 3,
+        target_reps: perSetReps,
+        target_weight: 0,
+      };
+    }
+
     setExercises(updated);
   };
 
@@ -184,10 +216,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const exerciseData = exercises.map((ex) => ({
         exercise_id: ex.exercise.id,
         order_index: ex.order_index,
-        target_sets: ex.target_sets,
+        target_sets: ex.tally_mode ? 0 : ex.target_sets,
         target_reps: ex.target_reps,
-        target_weight: ex.target_weight,
+        target_weight: ex.tally_mode ? 0 : ex.target_weight,
         notes: ex.notes || undefined,
+        tally_mode: ex.tally_mode,
       }));
 
       if (isEditing && editTemplate) {
@@ -312,29 +345,36 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
                     {/* Exercise details */}
                     <div className="flex-1">
-                      <div className="font-semibold mb-2">
-                        {index + 1}. {ex.exercise.name}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold">
+                          {index + 1}. {ex.exercise.name}
+                        </div>
+                        <button
+                          onClick={() => handleToggleTallyMode(index)}
+                          className="flex items-center gap-1.5 text-xs"
+                        >
+                          <div
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                              ex.tally_mode ? 'bg-primary-500' : 'bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                                ex.tally_mode ? 'translate-x-4' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </div>
+                          <span className="text-gray-300">
+                            {ex.tally_mode ? 'Tally' : 'Sets'}
+                          </span>
+                        </button>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 mb-2">
-                        <div>
-                          <label className="text-xs text-gray-400">Sets</label>
-                          <input
-                            type="number"
-                            value={ex.target_sets}
-                            onChange={(e) =>
-                              handleUpdateExercise(
-                                index,
-                                'target_sets',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="input w-full text-sm"
-                            min="1"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400">Reps</label>
+                      {ex.tally_mode ? (
+                        <div className="mb-2">
+                          <label className="text-xs text-gray-400">
+                            Rep Target (total)
+                          </label>
                           <input
                             type="number"
                             value={ex.target_reps}
@@ -347,28 +387,64 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             }
                             className="input w-full text-sm"
                             min="1"
+                            placeholder="e.g., 50"
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-gray-400">
-                            Weight (lbs)
-                          </label>
-                          <input
-                            type="number"
-                            value={ex.target_weight}
-                            onChange={(e) =>
-                              handleUpdateExercise(
-                                index,
-                                'target_weight',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="input w-full text-sm"
-                            min="0"
-                            step="5"
-                          />
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div>
+                            <label className="text-xs text-gray-400">Sets</label>
+                            <input
+                              type="number"
+                              value={ex.target_sets}
+                              onChange={(e) =>
+                                handleUpdateExercise(
+                                  index,
+                                  'target_sets',
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="input w-full text-sm"
+                              min="1"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400">Reps</label>
+                            <input
+                              type="number"
+                              value={ex.target_reps}
+                              onChange={(e) =>
+                                handleUpdateExercise(
+                                  index,
+                                  'target_reps',
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="input w-full text-sm"
+                              min="1"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400">
+                              Weight (lbs)
+                            </label>
+                            <input
+                              type="number"
+                              value={ex.target_weight}
+                              onChange={(e) =>
+                                handleUpdateExercise(
+                                  index,
+                                  'target_weight',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="input w-full text-sm"
+                              min="0"
+                              step="5"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div>
                         <label className="text-xs text-gray-400">
