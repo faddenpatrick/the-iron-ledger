@@ -22,6 +22,26 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Token refresh queue — ensures only ONE refresh happens at a time.
+// When multiple requests hit 401 simultaneously, the first triggers
+// the refresh and the rest wait for it to complete, then all retry
+// with the new token.
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+function onRefreshFailed() {
+  refreshSubscribers = [];
+}
+
 // Response interceptor - handle 401 and refresh token
 api.interceptors.response.use(
   (response) => response,
@@ -31,6 +51,27 @@ api.interceptors.response.use(
     // If 401 and not already retried, try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+
+      // If a refresh is already in progress, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((newToken: string) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            }
+            resolve(api(originalRequest));
+          });
+          // If refresh fails while waiting, reject
+          const checkFailed = setInterval(() => {
+            if (!isRefreshing && refreshSubscribers.length === 0) {
+              clearInterval(checkFailed);
+              reject(error);
+            }
+          }, 100);
+        });
+      }
+
+      isRefreshing = true;
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
@@ -49,12 +90,20 @@ api.interceptors.response.use(
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', new_refresh_token);
 
+        isRefreshing = false;
+
+        // Notify all queued requests with the new token
+        onTokenRefreshed(access_token);
+
         // Retry original request with new token
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
         }
         return api(originalRequest);
       } catch (refreshError) {
+        isRefreshing = false;
+        onRefreshFailed();
+
         // Refresh failed, logout user
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');

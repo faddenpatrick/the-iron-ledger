@@ -172,8 +172,39 @@ export const getWorkouts = async (params?: {
   end_date?: string;
   workout_type?: string;
 }): Promise<WorkoutList[]> => {
-  const response = await api.get('/workouts', { params });
-  return response.data;
+  // IndexedDB first
+  let workouts = await db.workouts.toArray();
+
+  // Apply filters
+  if (params?.start_date) {
+    workouts = workouts.filter((w) => w.workout_date >= params.start_date!);
+  }
+  if (params?.end_date) {
+    workouts = workouts.filter((w) => w.workout_date <= params.end_date!);
+  }
+  if (params?.workout_type) {
+    workouts = workouts.filter((w) => w.workout_type === params.workout_type);
+  }
+
+  // Sort by date descending (most recent first)
+  workouts.sort((a, b) => b.workout_date.localeCompare(a.workout_date));
+
+  // Background API update if online
+  if (navigator.onLine) {
+    try {
+      const response = await api.get('/workouts', { params });
+      const apiWorkouts = response.data;
+      // Update IndexedDB with fresh data
+      if (apiWorkouts.length > 0) {
+        await db.workouts.bulkPut(apiWorkouts);
+      }
+      return apiWorkouts;
+    } catch (error) {
+      console.error('Failed to fetch workouts from API:', error);
+    }
+  }
+
+  return workouts as unknown as WorkoutList[];
 };
 
 export const getWorkout = async (id: string): Promise<Workout> => {

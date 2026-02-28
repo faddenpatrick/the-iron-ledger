@@ -140,10 +140,33 @@ export const deleteFood = async (id: string): Promise<void> => {
 
 // Meals
 export const getMeals = async (meal_date?: string): Promise<MealList[]> => {
-  const response = await api.get('/nutrition/meals', {
-    params: { meal_date },
-  });
-  return response.data;
+  // IndexedDB first
+  let meals = await db.meals.toArray();
+
+  if (meal_date) {
+    meals = meals.filter((m) => m.meal_date === meal_date);
+  }
+
+  // Sort by meal_time
+  meals.sort((a, b) => (a.meal_time || '').localeCompare(b.meal_time || ''));
+
+  // Background API update if online
+  if (navigator.onLine) {
+    try {
+      const response = await api.get('/nutrition/meals', {
+        params: { meal_date },
+      });
+      const apiMeals = response.data;
+      if (apiMeals.length > 0) {
+        await db.meals.bulkPut(apiMeals);
+      }
+      return apiMeals;
+    } catch (error) {
+      console.error('Failed to fetch meals from API:', error);
+    }
+  }
+
+  return meals as unknown as MealList[];
 };
 
 export const getMeal = async (id: string): Promise<Meal> => {
@@ -267,10 +290,28 @@ export const copyMeal = async (
 export const getNutritionSummary = async (
   date: string
 ): Promise<NutritionSummary> => {
-  const response = await api.get('/nutrition/summary', {
-    params: { summary_date: date },
-  });
-  return response.data;
+  // Check IndexedDB cache first
+  const cached = await db.nutritionSummaries.get(date);
+
+  // Background API update if online
+  if (navigator.onLine) {
+    try {
+      const response = await api.get('/nutrition/summary', {
+        params: { summary_date: date },
+      });
+      const summary = response.data;
+      // Cache in IndexedDB
+      await db.nutritionSummaries.put({ ...summary, date });
+      return summary;
+    } catch (error) {
+      console.error('Failed to fetch nutrition summary from API:', error);
+      if (cached) return cached;
+      throw error;
+    }
+  }
+
+  if (cached) return cached;
+  throw new Error('No cached nutrition summary and offline');
 };
 
 // Weekly Summary

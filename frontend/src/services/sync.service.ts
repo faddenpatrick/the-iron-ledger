@@ -119,7 +119,6 @@ class SyncService {
       // Pull exercises
       const exercisesRes = await api.get('/exercises?limit=500');
       if (exercisesRes.data) {
-        // Response is array of exercises, not paginated
         await db.exercises.bulkPut(exercisesRes.data);
       }
 
@@ -137,6 +136,22 @@ class SyncService {
       );
       if (workoutsRes.data) {
         await db.workouts.bulkPut(workoutsRes.data);
+
+        // Pull full details (with sets) for each recent workout
+        // to populate the sets table for offline access
+        for (const workout of workoutsRes.data) {
+          try {
+            const fullWorkout = await api.get(`/workouts/${workout.id}`);
+            if (fullWorkout.data) {
+              await db.workouts.put(fullWorkout.data);
+              if (fullWorkout.data.sets?.length > 0) {
+                await db.sets.bulkPut(fullWorkout.data.sets);
+              }
+            }
+          } catch {
+            // Individual workout detail fetch failed, skip it
+          }
+        }
       }
 
       // Pull meal categories
@@ -151,7 +166,7 @@ class SyncService {
         await db.foods.bulkPut(foodsRes.data.items);
       }
 
-      // Pull recent meals (last 7 days)
+      // Pull recent meals (last 7 days) with full details
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const mealsRes = await api.get(
@@ -159,6 +174,34 @@ class SyncService {
       );
       if (mealsRes.data) {
         await db.meals.bulkPut(mealsRes.data);
+
+        // Pull full details (with items) for each recent meal
+        for (const meal of mealsRes.data) {
+          try {
+            const fullMeal = await api.get(`/nutrition/meals/${meal.id}`);
+            if (fullMeal.data) {
+              await db.meals.put(fullMeal.data);
+              if (fullMeal.data.items?.length > 0) {
+                await db.mealItems.bulkPut(fullMeal.data.items);
+              }
+            }
+          } catch {
+            // Individual meal detail fetch failed, skip it
+          }
+        }
+      }
+
+      // Pull today's nutrition summary for cache
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const summaryRes = await api.get('/nutrition/summary', {
+          params: { summary_date: today },
+        });
+        if (summaryRes.data) {
+          await db.nutritionSummaries.put({ ...summaryRes.data, date: today });
+        }
+      } catch {
+        // Summary fetch failed, not critical
       }
 
       console.log('Data pulled successfully');
