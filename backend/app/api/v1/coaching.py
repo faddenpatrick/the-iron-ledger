@@ -9,7 +9,7 @@ from typing import Optional
 from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings, CoachInsight, BodyMeasurement
 from ...models.workout import Workout, Set
-from ...models.nutrition import Meal, MealItem
+from ...models.nutrition import Meal, MealItem, CheatDay
 from ...models.supplement import Supplement, SupplementLog
 from ...core.coach_personas import get_coach
 from ...config import settings as app_settings
@@ -103,8 +103,37 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     else:
         lines.append("No workouts logged this week.")
 
+    # --- Cheat Days ---
+    cheat_days_list = db.query(CheatDay).filter(
+        CheatDay.user_id == user_id,
+        CheatDay.cheat_date >= week_ago,
+        CheatDay.cheat_date <= today,
+    ).order_by(CheatDay.cheat_date).all()
+    cheat_date_set = {cd.cheat_date for cd in cheat_days_list}
+
     # --- Nutrition data ---
     lines.append(f"\n--- NUTRITION DATA (last 7 days) ---")
+
+    if cheat_days_list:
+        cheat_count = len(cheat_days_list)
+        cheat_dates_str = ", ".join(str(cd.cheat_date) for cd in cheat_days_list)
+        lines.append(f"Cheat days this week: {cheat_count} ({cheat_dates_str})")
+
+        # Flag streaks of 3+ consecutive cheat days
+        if cheat_count >= 3:
+            sorted_dates = sorted(cd.cheat_date for cd in cheat_days_list)
+            max_streak = 1
+            current_streak = 1
+            for i in range(1, len(sorted_dates)):
+                if (sorted_dates[i] - sorted_dates[i - 1]).days == 1:
+                    current_streak += 1
+                    max_streak = max(max_streak, current_streak)
+                else:
+                    current_streak = 1
+            if max_streak >= 3:
+                lines.append(f"WARNING: {max_streak} consecutive cheat days detected")
+    else:
+        lines.append("Cheat days this week: 0")
 
     # Daily totals for the week
     daily_totals = db.query(
@@ -120,20 +149,24 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
         Meal.deleted_at.is_(None),
     ).group_by(Meal.meal_date).all()
 
-    if daily_totals:
-        total_cal = sum(day.daily_calories or 0 for day in daily_totals)
-        total_pro = sum(day.daily_protein or 0 for day in daily_totals)
-        total_carb = sum(day.daily_carbs or 0 for day in daily_totals)
-        total_fat = sum(day.daily_fat or 0 for day in daily_totals)
+    # Exclude cheat days from averages
+    non_cheat_totals = [day for day in daily_totals if day.meal_date not in cheat_date_set]
 
-        days_logged = len(daily_totals)
-        lines.append(f"Days with nutrition logged: {days_logged} / 7")
-        lines.append(f"Daily average calories: {int(total_cal) // 7}")
-        lines.append(f"Daily average protein: {int(total_pro) // 7}g")
-        lines.append(f"Daily average carbs: {int(total_carb) // 7}g")
-        lines.append(f"Daily average fat: {int(total_fat) // 7}g")
+    if non_cheat_totals:
+        total_cal = sum(day.daily_calories or 0 for day in non_cheat_totals)
+        total_pro = sum(day.daily_protein or 0 for day in non_cheat_totals)
+        total_carb = sum(day.daily_carbs or 0 for day in non_cheat_totals)
+        total_fat = sum(day.daily_fat or 0 for day in non_cheat_totals)
+
+        denominator = max(7 - len(cheat_date_set), 1)
+        days_logged = len(non_cheat_totals)
+        lines.append(f"Days with nutrition logged (excluding cheat days): {days_logged} / {denominator}")
+        lines.append(f"Daily average calories: {int(total_cal) // denominator}")
+        lines.append(f"Daily average protein: {int(total_pro) // denominator}g")
+        lines.append(f"Daily average carbs: {int(total_carb) // denominator}g")
+        lines.append(f"Daily average fat: {int(total_fat) // denominator}g")
     else:
-        lines.append("No nutrition data logged this week.")
+        lines.append("No nutrition data logged this week (excluding cheat days).")
 
     # Macro targets
     if user_settings:

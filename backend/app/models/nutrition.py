@@ -1,7 +1,7 @@
 """Nutrition tracking models."""
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Date, Text, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float, Date, Text, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from ..database import Base
@@ -101,3 +101,20 @@ class MealItem(Base):
     # Relationships
     meal = relationship("Meal", back_populates="items")
     food = relationship("Food", back_populates="meal_items")
+
+
+class CheatDay(Base):
+    """Cheat day marker — one per user per date."""
+
+    __tablename__ = "cheat_days"
+    __table_args__ = (
+        UniqueConstraint("user_id", "cheat_date", name="uq_cheat_days_user_date"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    cheat_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="cheat_days")

@@ -28,6 +28,7 @@ class User(Base):
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
     body_measurements = relationship("BodyMeasurement", back_populates="user", cascade="all, delete-orphan")
     supplements = relationship("Supplement", back_populates="user", cascade="all, delete-orphan")
+    cheat_days = relationship("CheatDay", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSettings(Base):

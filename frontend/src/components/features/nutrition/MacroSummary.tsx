@@ -3,9 +3,10 @@ import { NutritionSummary } from '../../../types/nutrition';
 
 interface MacroSummaryProps {
   summary: NutritionSummary;
+  isCheatDay?: boolean;
 }
 
-export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary }) => {
+export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary, isCheatDay }) => {
   const calculatePercentage = (current: number, target: number | null) => {
     if (!target || target === 0) return 0;
     return Math.min((current / target) * 100, 100);
@@ -45,6 +46,14 @@ export const MacroSummary: React.FC<MacroSummaryProps> = ({ summary }) => {
   return (
     <div className="card">
       <h3 className="text-lg font-semibold mb-4">Today's Nutrition</h3>
+
+      {isCheatDay && (
+        <div className="mb-4 p-3 bg-amber-500/20 border border-amber-500/40 rounded-lg text-center">
+          <span className="text-amber-400 font-medium text-sm">
+            Cheat Day -- not counted toward weekly averages
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         {macros.map((macro) => {

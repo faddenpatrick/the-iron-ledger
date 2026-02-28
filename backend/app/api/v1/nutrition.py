@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta, timezone
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings
-from ...models.nutrition import MealCategory, Food, Meal, MealItem
+from ...models.nutrition import MealCategory, Food, Meal, MealItem, CheatDay
 from ...schemas.nutrition import (
     MealCategoryCreate,
     MealCategoryUpdate,
@@ -24,6 +24,8 @@ from ...schemas.nutrition import (
     MealListResponse,
     NutritionSummaryResponse,
     WeeklySummaryResponse,
+    CheatDayToggleRequest,
+    CheatDayResponse,
 )
 
 router = APIRouter()
@@ -580,8 +582,15 @@ def get_nutrition_summary(
         Meal.deleted_at.is_(None)
     ).first()
 
+    # Check if this date is a cheat day
+    is_cheat_day = db.query(CheatDay).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date == summary_date
+    ).first() is not None
+
     return NutritionSummaryResponse(
         date=summary_date,
+        is_cheat_day=is_cheat_day,
         total_calories=int(totals.total_calories or 0),
         total_protein=int(totals.total_protein or 0),
         total_carbs=int(totals.total_carbs or 0),
@@ -603,9 +612,18 @@ def get_weekly_average(
     Get 7-day running average nutrition summary.
 
     Calculates averages for the 7-day period ending on end_date (inclusive).
-    Averages are calculated by dividing total by 7 days, not just logged days.
+    Cheat days are excluded from both the totals and the denominator.
     """
     start_date = end_date - timedelta(days=6)  # 7 days total
+
+    # Get cheat days in range
+    cheat_days_in_range = db.query(CheatDay.cheat_date).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date >= start_date,
+        CheatDay.cheat_date <= end_date
+    ).all()
+    cheat_date_set = {cd.cheat_date for cd in cheat_days_in_range}
+    cheat_day_count = len(cheat_date_set)
 
     # Query daily totals for each day in range (multiply by servings)
     daily_totals = db.query(
@@ -621,28 +639,116 @@ def get_weekly_average(
         Meal.deleted_at.is_(None)
     ).group_by(Meal.meal_date).all()
 
-    # Calculate totals across all days with data
-    total_calories = sum(day.daily_calories or 0 for day in daily_totals)
-    total_protein = sum(day.daily_protein or 0 for day in daily_totals)
-    total_carbs = sum(day.daily_carbs or 0 for day in daily_totals)
-    total_fat = sum(day.daily_fat or 0 for day in daily_totals)
+    # Exclude cheat days from totals
+    non_cheat_totals = [day for day in daily_totals if day.meal_date not in cheat_date_set]
+
+    total_calories = sum(day.daily_calories or 0 for day in non_cheat_totals)
+    total_protein = sum(day.daily_protein or 0 for day in non_cheat_totals)
+    total_carbs = sum(day.daily_carbs or 0 for day in non_cheat_totals)
+    total_fat = sum(day.daily_fat or 0 for day in non_cheat_totals)
 
     # Get user settings for targets
     settings = db.query(UserSettings).filter(
         UserSettings.user_id == current_user.id
     ).first()
 
-    # Calculate averages (divide by 7 days, not just logged days)
+    # Denominator: 7 minus cheat days (min 1 to prevent division by zero)
+    denominator = max(7 - cheat_day_count, 1)
+
     return WeeklySummaryResponse(
         start_date=start_date,
         end_date=end_date,
-        days_with_data=len(daily_totals),
-        avg_calories=int(total_calories) // 7,
-        avg_protein=int(total_protein) // 7,
-        avg_carbs=int(total_carbs) // 7,
-        avg_fat=int(total_fat) // 7,
+        days_with_data=len(non_cheat_totals),
+        cheat_day_count=cheat_day_count,
+        cheat_dates=sorted(cheat_date_set),
+        avg_calories=int(total_calories) // denominator,
+        avg_protein=int(total_protein) // denominator,
+        avg_carbs=int(total_carbs) // denominator,
+        avg_fat=int(total_fat) // denominator,
         target_calories=settings.macro_target_calories if settings else None,
         target_protein=settings.macro_target_protein if settings else None,
         target_carbs=settings.macro_target_carbs if settings else None,
         target_fat=settings.macro_target_fat if settings else None,
     )
+
+
+# ===== CHEAT DAYS =====
+
+@router.post("/cheat-days", response_model=CheatDayResponse, status_code=status.HTTP_201_CREATED)
+def toggle_cheat_day_on(
+    data: CheatDayToggleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark a date as a cheat day. Idempotent."""
+    existing = db.query(CheatDay).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date == data.cheat_date
+    ).first()
+
+    if existing:
+        return existing
+
+    cheat_day = CheatDay(
+        user_id=current_user.id,
+        cheat_date=data.cheat_date
+    )
+    db.add(cheat_day)
+    db.commit()
+    db.refresh(cheat_day)
+    return cheat_day
+
+
+@router.delete("/cheat-days/{cheat_date}", status_code=status.HTTP_204_NO_CONTENT)
+def toggle_cheat_day_off(
+    cheat_date: date,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove cheat day marker for a date."""
+    cheat_day = db.query(CheatDay).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date == cheat_date
+    ).first()
+
+    if not cheat_day:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cheat day not found"
+        )
+
+    db.delete(cheat_day)
+    db.commit()
+    return None
+
+
+@router.get("/cheat-days/{cheat_date}")
+def get_cheat_day(
+    cheat_date: date,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Check if a specific date is marked as a cheat day."""
+    exists = db.query(CheatDay).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date == cheat_date
+    ).first() is not None
+
+    return {"cheat_date": cheat_date, "is_cheat_day": exists}
+
+
+@router.get("/cheat-days")
+def get_cheat_days_range(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all cheat days in a date range."""
+    cheat_days = db.query(CheatDay).filter(
+        CheatDay.user_id == current_user.id,
+        CheatDay.cheat_date >= start_date,
+        CheatDay.cheat_date <= end_date
+    ).order_by(CheatDay.cheat_date).all()
+
+    return {"cheat_dates": [cd.cheat_date for cd in cheat_days]}

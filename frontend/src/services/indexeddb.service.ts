@@ -41,6 +41,7 @@ export class HealthAppDatabase extends Dexie {
   meals!: Table<Meal, string>;
   mealItems!: Table<MealItem, string>;
   nutritionSummaries!: Table<NutritionSummary & { date: string }, string>;
+  cheatDays!: Table<{ cheat_date: string }, string>;
 
   // Sync queue
   syncQueue!: Table<SyncQueueItem, number>;
@@ -77,6 +78,11 @@ export class HealthAppDatabase extends Dexie {
       // Update sets to include set_type and is_completed
       sets: 'id, workout_id, exercise_id, set_number, set_type, is_completed, created_at',
     });
+
+    // Version 3: Add cheat days
+    this.version(3).stores({
+      cheatDays: 'cheat_date',
+    });
   }
 }
 
@@ -96,6 +102,7 @@ export const clearAllData = async () => {
   await db.meals.clear();
   await db.mealItems.clear();
   await db.nutritionSummaries.clear();
+  await db.cheatDays.clear();
   await db.syncQueue.clear();
 };
 

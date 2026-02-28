@@ -58,6 +58,7 @@ export interface MealList {
 
 export interface NutritionSummary {
   date: string;
+  is_cheat_day: boolean;
   total_calories: number;
   total_protein: number;
   total_carbs: number;
@@ -72,6 +73,8 @@ export interface WeeklySummary {
   start_date: string;
   end_date: string;
   days_with_data: number;
+  cheat_day_count: number;
+  cheat_dates: string[];
   avg_calories: number;
   avg_protein: number;
   avg_carbs: number;

@@ -10,8 +10,10 @@ import { WeeklySummary } from '../components/features/nutrition/WeeklySummary';
 import { DailyMealList } from '../components/features/nutrition/DailyMealList';
 import { MeasurementsTab } from '../components/features/nutrition/MeasurementsTab';
 import { SupplementsTab } from '../components/features/nutrition/SupplementsTab';
+import { CheatDayToggle } from '../components/features/nutrition/CheatDayToggle';
 import { useNutrition } from '../hooks/useNutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
+import { useCheatDay } from '../hooks/useCheatDay';
 
 type NutritionTab = 'diet' | 'measurements' | 'supplements';
 
@@ -28,10 +30,17 @@ export const NutritionPage: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const { summary, loading, refresh } = useNutrition(selectedDate);
-  const { summary: weeklySummary, loading: weeklyLoading } = useWeeklySummary(selectedDate);
+  const { summary: weeklySummary, loading: weeklyLoading, refresh: refreshWeekly } = useWeeklySummary(selectedDate);
+  const { isCheatDay, loading: cheatDayLoading, toggle: toggleCheatDay } = useCheatDay(selectedDate);
 
   const handleMealLogged = () => {
     refresh();
+  };
+
+  const handleCheatDayToggle = async () => {
+    await toggleCheatDay();
+    refresh();
+    refreshWeekly();
   };
 
   const getCategoryName = () => {
@@ -71,6 +80,11 @@ export const NutritionPage: React.FC = () => {
       {activeTab === 'diet' && (
         <>
           <DateNavigation selectedDate={selectedDate} onDateChange={setSelectedDate} />
+          <CheatDayToggle
+            isCheatDay={isCheatDay}
+            loading={cheatDayLoading}
+            onToggle={handleCheatDayToggle}
+          />
           <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
 
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-6">
@@ -82,7 +96,7 @@ export const NutritionPage: React.FC = () => {
                     <div className="text-gray-400">Loading nutrition data...</div>
                   </div>
                 ) : summary ? (
-                  <MacroSummary summary={summary} />
+                  <MacroSummary summary={summary} isCheatDay={isCheatDay} />
                 ) : null}
 
                 {/* Category Selector */}

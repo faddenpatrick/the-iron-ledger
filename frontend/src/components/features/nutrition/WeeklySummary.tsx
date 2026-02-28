@@ -92,6 +92,11 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ summary, loading }
         <h3 className="text-lg font-semibold">7-Day Average</h3>
         <div className="text-sm text-gray-400 mt-1">
           {startDate} - {endDate} • {summary.days_with_data} days logged
+          {summary.cheat_day_count > 0 && (
+            <span className="text-amber-400 ml-1">
+              • {summary.cheat_day_count} cheat {summary.cheat_day_count === 1 ? 'day' : 'days'}
+            </span>
+          )}
         </div>
       </div>
 

@@ -140,6 +140,7 @@ class MealListResponse(MealBase):
 class NutritionSummaryResponse(BaseModel):
     """Daily nutrition summary."""
     date: date
+    is_cheat_day: bool = False
     total_calories: int
     total_protein: int
     total_carbs: int
@@ -155,6 +156,8 @@ class WeeklySummaryResponse(BaseModel):
     start_date: date
     end_date: date
     days_with_data: int
+    cheat_day_count: int = 0
+    cheat_dates: List[date] = []
     avg_calories: int
     avg_protein: int
     avg_carbs: int
@@ -163,3 +166,19 @@ class WeeklySummaryResponse(BaseModel):
     target_protein: Optional[int]
     target_carbs: Optional[int]
     target_fat: Optional[int]
+
+
+class CheatDayToggleRequest(BaseModel):
+    """Toggle cheat day request."""
+    cheat_date: date
+
+
+class CheatDayResponse(BaseModel):
+    """Cheat day response."""
+    id: UUID
+    user_id: UUID
+    cheat_date: date
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

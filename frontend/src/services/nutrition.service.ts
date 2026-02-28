@@ -323,3 +323,78 @@ export const getWeeklySummary = async (
   });
   return response.data;
 };
+
+// Cheat Days
+export const getCheatDayStatus = async (
+  date: string
+): Promise<{ cheat_date: string; is_cheat_day: boolean }> => {
+  const cached = await db.cheatDays.get(date);
+
+  if (navigator.onLine) {
+    try {
+      const response = await api.get(`/nutrition/cheat-days/${date}`);
+      if (response.data.is_cheat_day) {
+        await db.cheatDays.put({ cheat_date: date });
+      } else {
+        await db.cheatDays.delete(date);
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch cheat day status:', error);
+    }
+  }
+
+  return { cheat_date: date, is_cheat_day: cached !== undefined };
+};
+
+export const toggleCheatDayOn = async (date: string): Promise<void> => {
+  await db.cheatDays.put({ cheat_date: date });
+
+  if (navigator.onLine) {
+    try {
+      await api.post('/nutrition/cheat-days', { cheat_date: date });
+    } catch (error) {
+      console.error('Failed to set cheat day on server:', error);
+      await addToSyncQueue({
+        method: 'POST',
+        endpoint: '/nutrition/cheat-days',
+        data: { cheat_date: date },
+        entityType: 'cheatDay',
+        entityId: date,
+      });
+    }
+  } else {
+    await addToSyncQueue({
+      method: 'POST',
+      endpoint: '/nutrition/cheat-days',
+      data: { cheat_date: date },
+      entityType: 'cheatDay',
+      entityId: date,
+    });
+  }
+};
+
+export const toggleCheatDayOff = async (date: string): Promise<void> => {
+  await db.cheatDays.delete(date);
+
+  if (navigator.onLine) {
+    try {
+      await api.delete(`/nutrition/cheat-days/${date}`);
+    } catch (error) {
+      console.error('Failed to remove cheat day on server:', error);
+      await addToSyncQueue({
+        method: 'DELETE',
+        endpoint: `/nutrition/cheat-days/${date}`,
+        entityType: 'cheatDay',
+        entityId: date,
+      });
+    }
+  } else {
+    await addToSyncQueue({
+      method: 'DELETE',
+      endpoint: `/nutrition/cheat-days/${date}`,
+      entityType: 'cheatDay',
+      entityId: date,
+    });
+  }
+};

@@ -204,6 +204,27 @@ class SyncService {
         // Summary fetch failed, not critical
       }
 
+      // Pull cheat days (last 7 days)
+      try {
+        const cheatStartDate = new Date();
+        cheatStartDate.setDate(cheatStartDate.getDate() - 7);
+        const cheatStartStr = cheatStartDate.toISOString().split('T')[0];
+        const cheatEndStr = new Date().toISOString().split('T')[0];
+
+        const cheatRes = await api.get('/nutrition/cheat-days', {
+          params: { start_date: cheatStartStr, end_date: cheatEndStr },
+        });
+
+        if (cheatRes.data?.cheat_dates) {
+          await db.cheatDays.clear();
+          for (const dateStr of cheatRes.data.cheat_dates) {
+            await db.cheatDays.put({ cheat_date: dateStr });
+          }
+        }
+      } catch {
+        // Cheat day sync not critical
+      }
+
       console.log('Data pulled successfully');
     } catch (error) {
       console.error('Failed to pull data:', error);
