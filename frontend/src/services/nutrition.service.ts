@@ -286,6 +286,44 @@ export const copyMeal = async (
   return response.data;
 };
 
+// Calculate nutrition summary from local IndexedDB meals
+const calculateLocalSummary = async (date: string): Promise<NutritionSummary | null> => {
+  const meals = await db.meals.where('meal_date').equals(date).toArray();
+  if (meals.length === 0) return null;
+
+  let totalCalories = 0;
+  let totalProtein = 0;
+  let totalCarbs = 0;
+  let totalFat = 0;
+
+  for (const meal of meals) {
+    // Items may be embedded on the meal object or stored separately
+    const items = meal.items?.length
+      ? meal.items
+      : await db.mealItems.where('meal_id').equals(meal.id).toArray();
+
+    for (const item of items) {
+      totalCalories += (item.calories_snapshot || 0) * (item.servings || 1);
+      totalProtein += (item.protein_snapshot || 0) * (item.servings || 1);
+      totalCarbs += (item.carbs_snapshot || 0) * (item.servings || 1);
+      totalFat += (item.fat_snapshot || 0) * (item.servings || 1);
+    }
+  }
+
+  return {
+    date,
+    is_cheat_day: false,
+    total_calories: Math.round(totalCalories),
+    total_protein: Math.round(totalProtein),
+    total_carbs: Math.round(totalCarbs),
+    total_fat: Math.round(totalFat),
+    target_calories: null,
+    target_protein: null,
+    target_carbs: null,
+    target_fat: null,
+  };
+};
+
 // Nutrition Summary
 export const getNutritionSummary = async (
   date: string
@@ -293,23 +331,42 @@ export const getNutritionSummary = async (
   // Check IndexedDB cache first
   const cached = await db.nutritionSummaries.get(date);
 
+  // Calculate from local meals (covers unsynced data)
+  const localSummary = await calculateLocalSummary(date);
+
   // Background API update if online
   if (navigator.onLine) {
     try {
       const response = await api.get('/nutrition/summary', {
         params: { summary_date: date },
       });
-      const summary = response.data;
+      const serverSummary: NutritionSummary = response.data;
       // Cache in IndexedDB
-      await db.nutritionSummaries.put({ ...summary, date });
-      return summary;
+      await db.nutritionSummaries.put({ ...serverSummary, date });
+
+      // Use whichever source has higher totals (handles unsynced meals)
+      // but always prefer server targets and cheat day status
+      if (localSummary && localSummary.total_calories > serverSummary.total_calories) {
+        return {
+          ...localSummary,
+          is_cheat_day: serverSummary.is_cheat_day,
+          target_calories: serverSummary.target_calories,
+          target_protein: serverSummary.target_protein,
+          target_carbs: serverSummary.target_carbs,
+          target_fat: serverSummary.target_fat,
+        };
+      }
+
+      return serverSummary;
     } catch (error) {
       console.error('Failed to fetch nutrition summary from API:', error);
+      if (localSummary) return localSummary;
       if (cached) return cached;
       throw error;
     }
   }
 
+  if (localSummary) return localSummary;
   if (cached) return cached;
   throw new Error('No cached nutrition summary and offline');
 };
