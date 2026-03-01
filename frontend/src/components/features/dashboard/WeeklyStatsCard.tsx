@@ -55,7 +55,14 @@ export const WeeklyStatsCard: React.FC<WeeklyStatsCardProps> = ({
     <div className="card">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold">Weekly Stats</h3>
-        <span className="text-xs text-gray-500">7-day snapshot</span>
+        <div className="text-right">
+          <span className="text-xs text-gray-500">7-day snapshot</span>
+          {nutritionStats && nutritionStats.cheat_day_count > 0 && (
+            <div className="text-xs text-amber-400">
+              {nutritionStats.cheat_day_count} cheat {nutritionStats.cheat_day_count === 1 ? 'day' : 'days'} excluded
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

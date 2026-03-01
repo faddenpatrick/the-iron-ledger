@@ -153,6 +153,15 @@ export const Dashboard: React.FC = () => {
             {nutritionSummary ? (
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Today's Nutrition</h3>
+
+                {nutritionSummary.is_cheat_day && (
+                  <div className="mb-4 p-3 bg-amber-500/20 border border-amber-500/40 rounded-lg text-center">
+                    <span className="text-amber-400 font-medium text-sm">
+                      Cheat Day — not counted toward weekly averages
+                    </span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   {/* Calories */}
                   <div>
