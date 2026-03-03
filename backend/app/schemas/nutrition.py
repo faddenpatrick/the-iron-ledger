@@ -113,6 +113,11 @@ class MealCreate(MealBase):
     items: List[MealItemCreate] = []
 
 
+class MealUpdate(BaseModel):
+    """Update meal request (category only)."""
+    category_id: UUID
+
+
 class MealResponse(MealBase):
     """Meal response."""
     id: UUID

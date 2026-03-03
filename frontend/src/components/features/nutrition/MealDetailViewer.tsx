@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Meal, MealItem as MealItemType, Food } from '../../../types/nutrition';
-import { getMeal, deleteMealItem, addMealItem, createFood, updateMealItemServings } from '../../../services/nutrition.service';
+import { Meal, MealCategory, MealItem as MealItemType, Food } from '../../../types/nutrition';
+import { getMeal, getMealCategories, updateMealType, deleteMealItem, addMealItem, createFood, updateMealItemServings } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
 import { FoodSearch } from './FoodSearch';
 import { PortionInput } from './PortionInput';
@@ -24,10 +24,43 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [addingItem, setAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<MealItemType | null>(null);
+  const [categories, setCategories] = useState<MealCategory[]>([]);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [updatingCategory, setUpdatingCategory] = useState(false);
 
   useEffect(() => {
     loadMeal();
+    loadCategories();
   }, [mealId]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await getMealCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: string) => {
+    if (!meal || categoryId === meal.category_id) {
+      setEditingCategory(false);
+      return;
+    }
+
+    setUpdatingCategory(true);
+    try {
+      const updatedMeal = await updateMealType(meal.id, categoryId);
+      setMeal(updatedMeal);
+      setEditingCategory(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update meal category:', error);
+      alert('Failed to update meal type');
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
 
   const loadMeal = async () => {
     setLoading(true);
@@ -142,7 +175,39 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold">{meal.category_name_snapshot}</h2>
+            {editingCategory ? (
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    disabled={updatingCategory}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      cat.id === meal.category_id
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    } ${updatingCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setEditingCategory(false)}
+                  disabled={updatingCategory}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium text-gray-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingCategory(true)}
+                className="text-xl font-bold hover:text-primary-400 transition-colors flex items-center gap-2"
+              >
+                {meal.category_name_snapshot}
+                <span className="text-sm text-gray-400 font-normal">edit</span>
+              </button>
+            )}
             <p className="text-sm text-gray-400 mt-1">
               {format(new Date(meal.meal_time), 'EEEE, MMM d, yyyy • h:mm a')}
             </p>

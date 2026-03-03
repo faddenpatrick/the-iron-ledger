@@ -20,6 +20,7 @@ from ...schemas.nutrition import (
     MealItemUpdate,
     MealItemResponse,
     MealCreate,
+    MealUpdate,
     MealResponse,
     MealListResponse,
     NutritionSummaryResponse,
@@ -393,6 +394,53 @@ def delete_meal(
     meal.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return None
+
+
+@router.patch("/meals/{meal_id}", response_model=MealResponse)
+def update_meal(
+    meal_id: UUID,
+    meal_data: MealUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a meal's category."""
+    meal = db.query(Meal).filter(
+        Meal.id == meal_id,
+        Meal.user_id == current_user.id,
+        Meal.deleted_at.is_(None)
+    ).first()
+
+    if not meal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal not found"
+        )
+
+    # Verify new category exists
+    category = db.query(MealCategory).filter(
+        MealCategory.id == meal_data.category_id,
+        MealCategory.user_id == current_user.id,
+        MealCategory.deleted_at.is_(None)
+    ).first()
+
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found"
+        )
+
+    meal.category_id = category.id
+    meal.category_name_snapshot = category.name
+    meal.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+
+    # Load items for response
+    meal = db.query(Meal).options(
+        joinedload(Meal.items)
+    ).filter(Meal.id == meal_id).first()
+
+    return meal
 
 
 # ===== MEAL ITEMS =====
