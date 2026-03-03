@@ -248,6 +248,19 @@ export const createMeal = async (data: CreateMealRequest): Promise<Meal> => {
   }
 };
 
+export const updateMealType = async (
+  mealId: string,
+  categoryId: string
+): Promise<Meal> => {
+  const response = await api.patch(`/nutrition/meals/${mealId}`, {
+    category_id: categoryId,
+  });
+  const updatedMeal = response.data;
+  // Update local IndexedDB
+  await db.meals.put(updatedMeal);
+  return updatedMeal;
+};
+
 export const deleteMeal = async (id: string): Promise<void> => {
   await api.delete(`/nutrition/meals/${id}`);
 };
