@@ -57,7 +57,7 @@ class UserSettings(Base):
     macro_percentage_fat = Column(Integer, nullable=True)  # 0-100
 
     # AI Coach
-    coach_type = Column(String(50), default="arnold", nullable=False)
+    coach_type = Column(String(50), default="old_school", nullable=False)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

@@ -16,31 +16,43 @@ export interface CoachInsight {
 
 export const COACH_OPTIONS: CoachPersona[] = [
   {
-    key: 'arnold',
-    name: 'Arnold',
-    title: 'The Austrian Oak',
-    philosophy: 'Old-school bodybuilding. High volume, mind-muscle connection, and relentless drive.',
+    key: 'old_school',
+    name: 'Old School Bodybuilder',
+    title: 'The Golden Era',
+    philosophy:
+      'High volume, pump chasing, aesthetics, and the mind-muscle connection.',
     icon: '🏛️',
   },
   {
-    key: 'jay_cutler',
-    name: 'Jay Cutler',
-    title: 'Mr. Consistency',
-    philosophy: 'Methodical programming. Progressive overload, discipline, and structured growth.',
+    key: 'strategic',
+    name: 'Strategic Programmer',
+    title: 'Data-Driven Growth',
+    philosophy:
+      'Progressive overload, structured periodization, and disciplined consistency.',
     icon: '🎯',
   },
   {
-    key: 'cam_hanes',
-    name: 'Cameron Hanes',
-    title: 'Keep Hammering',
-    philosophy: 'Ultra-endurance, mental toughness, and outworking everyone. No excuses.',
-    icon: '🏔️',
+    key: 'relentless',
+    name: 'Relentless Endurance',
+    title: 'Never Quit',
+    philosophy:
+      'Mental toughness, embrace the suffering, and outwork everyone.',
+    icon: '🔥',
   },
   {
-    key: 'goggins',
-    name: 'David Goggins',
-    title: 'Stay Hard',
-    philosophy: 'The 40% rule. Callous the mind. Embrace the suffering.',
-    icon: '🔥',
+    key: 'functional',
+    name: 'Functional Athlete',
+    title: 'Performance First',
+    philosophy:
+      'Well-rounded fitness, compound movements, and real-world performance.',
+    icon: '⚡',
+  },
+  {
+    key: 'wellness',
+    name: 'Balanced Wellness',
+    title: 'Sustainable Strength',
+    philosophy:
+      'Holistic health, recovery-focused, and long-term sustainable habits.',
+    icon: '🧘',
   },
 ];
