@@ -48,7 +48,7 @@ export const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   // Coach state
-  const [coachType, setCoachType] = useState('arnold');
+  const [coachType, setCoachType] = useState('old_school');
 
   // Macro mode state
   const [macroMode, setMacroMode] = useState<'grams' | 'percentage'>('grams');

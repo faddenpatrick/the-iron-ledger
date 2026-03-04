@@ -1,10 +1,9 @@
 """AI coaching insight endpoint."""
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timedelta
 from pydantic import BaseModel
-from typing import Optional
 
 from ...api.deps import get_db, get_current_user
 from ...models.user import User, UserSettings, CoachInsight, BodyMeasurement
@@ -30,8 +29,32 @@ class CoachInsightResponse(BaseModel):
         from_attributes = True
 
 
+def _completed_workout_subquery(user_id, db, start_date=None, end_date=None):
+    """Build a subquery for completed workout IDs with optional date range."""
+    q = db.query(Workout.id).filter(
+        Workout.user_id == user_id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+    )
+    if start_date is not None:
+        q = q.filter(Workout.workout_date >= start_date)
+    if end_date is not None:
+        q = q.filter(Workout.workout_date <= end_date)
+    return q.subquery()
+
+
+def _week_volume(workout_sq, db):
+    """Get total volume for a set of workout IDs."""
+    return db.query(
+        func.sum(func.coalesce(Set.weight, 0) * func.coalesce(Set.reps, 0))
+    ).filter(
+        Set.workout_id.in_(workout_sq),
+        Set.is_completed == True,
+    ).scalar() or 0
+
+
 def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
-    """Gather recent workout and nutrition data for the coaching prompt."""
+    """Gather workout, nutrition, and historical trend data for the coaching prompt."""
     today = date.today()
     week_ago = today - timedelta(days=6)
     units = user_settings.units if user_settings else "lbs"
@@ -39,7 +62,173 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     lines = []
     lines.append(f"User's preferred units: {units}")
 
-    # --- Weekly workout stats ---
+    # ================================================================
+    # ALL-TIME OVERVIEW
+    # ================================================================
+    all_time_sq = _completed_workout_subquery(user_id, db)
+
+    total_workouts_ever = db.query(func.count(Workout.id)).filter(
+        Workout.user_id == user_id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+    ).scalar() or 0
+
+    first_workout = db.query(func.min(Workout.workout_date)).filter(
+        Workout.user_id == user_id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+    ).scalar()
+
+    lines.append(f"\n--- ALL-TIME OVERVIEW ---")
+    if first_workout:
+        total_days_active = (today - first_workout).days + 1
+        weeks_active = max(total_days_active / 7, 1)
+        avg_per_week = total_workouts_ever / weeks_active
+
+        all_time_volume = _week_volume(all_time_sq, db)
+
+        lines.append(f"Member since: {first_workout} ({total_days_active} days)")
+        lines.append(f"Total workouts completed: {total_workouts_ever}")
+        lines.append(f"Average workouts per week: {avg_per_week:.1f}")
+        lines.append(f"Total volume lifted (all time): {all_time_volume:,.0f} {units}")
+    else:
+        lines.append("No workouts completed yet.")
+
+    # ================================================================
+    # MONTHLY COMPARISON (last 30 days vs previous 30 days)
+    # ================================================================
+    thirty_days_ago = today - timedelta(days=29)
+    sixty_days_ago = today - timedelta(days=59)
+
+    this_month_sq = _completed_workout_subquery(user_id, db, thirty_days_ago, today)
+    last_month_sq = _completed_workout_subquery(user_id, db, sixty_days_ago, thirty_days_ago - timedelta(days=1))
+
+    this_month_count = db.query(func.count(Workout.id)).filter(
+        Workout.user_id == user_id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+        Workout.workout_date >= thirty_days_ago,
+        Workout.workout_date <= today,
+    ).scalar() or 0
+
+    last_month_count = db.query(func.count(Workout.id)).filter(
+        Workout.user_id == user_id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+        Workout.workout_date >= sixty_days_ago,
+        Workout.workout_date < thirty_days_ago,
+    ).scalar() or 0
+
+    lines.append(f"\n--- MONTHLY COMPARISON (last 30 days vs previous 30 days) ---")
+
+    if this_month_count > 0 or last_month_count > 0:
+        this_month_vol = _week_volume(this_month_sq, db)
+        last_month_vol = _week_volume(last_month_sq, db)
+
+        lines.append(f"This month: {this_month_count} workouts, {this_month_vol:,.0f} {units} volume")
+        lines.append(f"Last month: {last_month_count} workouts, {last_month_vol:,.0f} {units} volume")
+
+        if last_month_count > 0:
+            freq_change = ((this_month_count - last_month_count) / last_month_count) * 100
+            lines.append(f"Workout frequency change: {freq_change:+.0f}%")
+        if last_month_vol > 0:
+            vol_change = ((this_month_vol - last_month_vol) / last_month_vol) * 100
+            lines.append(f"Volume change: {vol_change:+.0f}%")
+    else:
+        lines.append("Not enough data for monthly comparison.")
+
+    # ================================================================
+    # EXERCISE PROGRESSION (top 5 exercises by frequency)
+    # ================================================================
+    lines.append(f"\n--- EXERCISE PROGRESSION (top exercises) ---")
+
+    top_exercises = db.query(
+        Set.exercise_name_snapshot,
+        func.count(Set.id).label('total_sets'),
+    ).filter(
+        Set.workout_id.in_(all_time_sq),
+        Set.is_completed == True,
+        Set.weight.isnot(None),
+    ).group_by(Set.exercise_name_snapshot).order_by(
+        func.count(Set.id).desc()
+    ).limit(5).all()
+
+    if top_exercises:
+        for ex_name, total_sets in top_exercises:
+            all_time_pr = db.query(func.max(Set.weight)).filter(
+                Set.workout_id.in_(all_time_sq),
+                Set.exercise_name_snapshot == ex_name,
+                Set.is_completed == True,
+            ).scalar()
+
+            best_this_month = db.query(func.max(Set.weight)).filter(
+                Set.workout_id.in_(this_month_sq),
+                Set.exercise_name_snapshot == ex_name,
+                Set.is_completed == True,
+            ).scalar()
+
+            best_last_month = db.query(func.max(Set.weight)).filter(
+                Set.workout_id.in_(last_month_sq),
+                Set.exercise_name_snapshot == ex_name,
+                Set.is_completed == True,
+            ).scalar()
+
+            parts = [f"{ex_name}: All-time PR {all_time_pr} {units}"]
+            if best_this_month is not None:
+                parts.append(f"This month best: {best_this_month} {units}")
+            if best_last_month is not None and best_this_month is not None:
+                diff = best_this_month - best_last_month
+                direction = "+" if diff > 0 else ""
+                tag = " [REGRESSION]" if diff < 0 else (" [PR]" if best_this_month >= all_time_pr and diff > 0 else "")
+                parts.append(f"Last month best: {best_last_month} {units} ({direction}{diff} {units}){tag}")
+            elif best_last_month is not None:
+                parts.append(f"Last month best: {best_last_month} {units}")
+
+            lines.append(f"  - {' | '.join(parts)}")
+    else:
+        lines.append("No weighted exercise data yet.")
+
+    # ================================================================
+    # CONSISTENCY (last 8 weeks)
+    # ================================================================
+    lines.append(f"\n--- CONSISTENCY (last 8 weeks) ---")
+
+    weekly_workout_counts = []
+    weekly_nutrition_days = []
+    for week_offset in range(8):
+        w_end = today - timedelta(days=week_offset * 7)
+        w_start = w_end - timedelta(days=6)
+
+        wk_count = db.query(func.count(Workout.id)).filter(
+            Workout.user_id == user_id,
+            Workout.deleted_at.is_(None),
+            Workout.completed_at.isnot(None),
+            Workout.workout_date >= w_start,
+            Workout.workout_date <= w_end,
+        ).scalar() or 0
+        weekly_workout_counts.append(wk_count)
+
+        nutr_days = db.query(func.count(func.distinct(Meal.meal_date))).filter(
+            Meal.user_id == user_id,
+            Meal.meal_date >= w_start,
+            Meal.meal_date <= w_end,
+            Meal.deleted_at.is_(None),
+        ).scalar() or 0
+        weekly_nutrition_days.append(nutr_days)
+
+    lines.append(f"Workout frequency (newest first): {', '.join(str(c) for c in weekly_workout_counts)} workouts/week")
+    if weekly_workout_counts:
+        avg_freq = sum(weekly_workout_counts) / len(weekly_workout_counts)
+        lines.append(f"Average: {avg_freq:.1f}/week")
+
+    lines.append(f"Nutrition logging (newest first): {', '.join(str(d) for d in weekly_nutrition_days)} days/week")
+    if weekly_nutrition_days:
+        avg_nutr = sum(weekly_nutrition_days) / len(weekly_nutrition_days)
+        lines.append(f"Average: {avg_nutr:.1f} days/week")
+
+    # ================================================================
+    # THIS WEEK WORKOUT DETAIL (existing, kept for immediate context)
+    # ================================================================
     completed_workouts = db.query(Workout).filter(
         Workout.user_id == user_id,
         Workout.deleted_at.is_(None),
@@ -51,11 +240,10 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     workouts_completed = len(completed_workouts)
     workout_ids = [w.id for w in completed_workouts]
 
-    lines.append(f"\n--- WORKOUT DATA (last 7 days) ---")
+    lines.append(f"\n--- THIS WEEK WORKOUT DETAIL (last 7 days) ---")
     lines.append(f"Workouts completed: {workouts_completed}")
 
     if workout_ids:
-        # Volume and sets
         stats = db.query(
             func.sum(
                 func.coalesce(Set.weight, 0) * func.coalesce(Set.reps, 0)
@@ -74,7 +262,6 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
         if workouts_completed > 0:
             lines.append(f"Avg sets per workout: {total_sets / workouts_completed:.1f}")
 
-        # Avg duration
         durations = []
         for w in completed_workouts:
             if w.started_at and w.completed_at:
@@ -84,7 +271,6 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
         if durations:
             lines.append(f"Avg workout duration: {sum(durations) / len(durations):.0f} minutes")
 
-        # Exercise breakdown from recent workouts
         exercise_summary = db.query(
             Set.exercise_name_snapshot,
             func.count(Set.id).label('set_count'),
@@ -103,7 +289,51 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     else:
         lines.append("No workouts logged this week.")
 
-    # --- Cheat Days ---
+    # ================================================================
+    # NUTRITION TRENDS (last 4 weeks)
+    # ================================================================
+    lines.append(f"\n--- NUTRITION TRENDS (last 4 weeks, excluding cheat days) ---")
+
+    for week_offset in range(4):
+        w_end = today - timedelta(days=week_offset * 7)
+        w_start = w_end - timedelta(days=6)
+
+        week_cheat_dates = {cd.cheat_date for cd in db.query(CheatDay).filter(
+            CheatDay.user_id == user_id,
+            CheatDay.cheat_date >= w_start,
+            CheatDay.cheat_date <= w_end,
+        ).all()}
+
+        week_daily = db.query(
+            Meal.meal_date,
+            func.sum(MealItem.calories_snapshot * MealItem.servings).label('cal'),
+            func.sum(MealItem.protein_snapshot * MealItem.servings).label('pro'),
+            func.sum(MealItem.carbs_snapshot * MealItem.servings).label('carbs'),
+            func.sum(MealItem.fat_snapshot * MealItem.servings).label('fat'),
+        ).join(MealItem).filter(
+            Meal.user_id == user_id,
+            Meal.meal_date >= w_start,
+            Meal.meal_date <= w_end,
+            Meal.deleted_at.is_(None),
+        ).group_by(Meal.meal_date).all()
+
+        non_cheat = [d for d in week_daily if d.meal_date not in week_cheat_dates]
+        days_logged = len(non_cheat)
+
+        label = "This week" if week_offset == 0 else f"Week -{week_offset}"
+        if non_cheat:
+            denominator = max(7 - len(week_cheat_dates), 1)
+            avg_cal = int(sum(d.cal or 0 for d in non_cheat)) // denominator
+            avg_pro = int(sum(d.pro or 0 for d in non_cheat)) // denominator
+            avg_carbs = int(sum(d.carbs or 0 for d in non_cheat)) // denominator
+            avg_fat = int(sum(d.fat or 0 for d in non_cheat)) // denominator
+            lines.append(f"{label}: avg {avg_cal} cal | {avg_pro}g protein | {avg_carbs}g carbs | {avg_fat}g fat ({days_logged} days logged)")
+        else:
+            lines.append(f"{label}: No nutrition data logged")
+
+    # ================================================================
+    # THIS WEEK CHEAT DAYS & NUTRITION DETAIL
+    # ================================================================
     cheat_days_list = db.query(CheatDay).filter(
         CheatDay.user_id == user_id,
         CheatDay.cheat_date >= week_ago,
@@ -111,15 +341,12 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     ).order_by(CheatDay.cheat_date).all()
     cheat_date_set = {cd.cheat_date for cd in cheat_days_list}
 
-    # --- Nutrition data ---
-    lines.append(f"\n--- NUTRITION DATA (last 7 days) ---")
-
+    lines.append(f"\n--- THIS WEEK CHEAT DAYS ---")
     if cheat_days_list:
         cheat_count = len(cheat_days_list)
         cheat_dates_str = ", ".join(str(cd.cheat_date) for cd in cheat_days_list)
         lines.append(f"Cheat days this week: {cheat_count} ({cheat_dates_str})")
 
-        # Flag streaks of 3+ consecutive cheat days
         if cheat_count >= 3:
             sorted_dates = sorted(cd.cheat_date for cd in cheat_days_list)
             max_streak = 1
@@ -135,39 +362,6 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     else:
         lines.append("Cheat days this week: 0")
 
-    # Daily totals for the week
-    daily_totals = db.query(
-        Meal.meal_date,
-        func.sum(MealItem.calories_snapshot * MealItem.servings).label('daily_calories'),
-        func.sum(MealItem.protein_snapshot * MealItem.servings).label('daily_protein'),
-        func.sum(MealItem.carbs_snapshot * MealItem.servings).label('daily_carbs'),
-        func.sum(MealItem.fat_snapshot * MealItem.servings).label('daily_fat'),
-    ).join(MealItem).filter(
-        Meal.user_id == user_id,
-        Meal.meal_date >= week_ago,
-        Meal.meal_date <= today,
-        Meal.deleted_at.is_(None),
-    ).group_by(Meal.meal_date).all()
-
-    # Exclude cheat days from averages
-    non_cheat_totals = [day for day in daily_totals if day.meal_date not in cheat_date_set]
-
-    if non_cheat_totals:
-        total_cal = sum(day.daily_calories or 0 for day in non_cheat_totals)
-        total_pro = sum(day.daily_protein or 0 for day in non_cheat_totals)
-        total_carb = sum(day.daily_carbs or 0 for day in non_cheat_totals)
-        total_fat = sum(day.daily_fat or 0 for day in non_cheat_totals)
-
-        denominator = max(7 - len(cheat_date_set), 1)
-        days_logged = len(non_cheat_totals)
-        lines.append(f"Days with nutrition logged (excluding cheat days): {days_logged} / {denominator}")
-        lines.append(f"Daily average calories: {int(total_cal) // denominator}")
-        lines.append(f"Daily average protein: {int(total_pro) // denominator}g")
-        lines.append(f"Daily average carbs: {int(total_carb) // denominator}g")
-        lines.append(f"Daily average fat: {int(total_fat) // denominator}g")
-    else:
-        lines.append("No nutrition data logged this week (excluding cheat days).")
-
     # Macro targets
     if user_settings:
         targets = []
@@ -182,7 +376,9 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
         if targets:
             lines.append(f"\nUser's daily macro targets: {', '.join(targets)}")
 
-    # --- Body measurements ---
+    # ================================================================
+    # BODY MEASUREMENTS
+    # ================================================================
     lines.append(f"\n--- BODY MEASUREMENTS ---")
 
     latest_measurement = db.query(BodyMeasurement).filter(
@@ -193,12 +389,11 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     if latest_measurement:
         lines.append(f"Current weight: {latest_measurement.weight} {units} (logged {latest_measurement.measurement_date})")
 
-        # Look for a measurement from ~30 days ago
-        thirty_days_ago = today - timedelta(days=30)
+        thirty_days_ago_bm = today - timedelta(days=30)
         old_measurement = db.query(BodyMeasurement).filter(
             BodyMeasurement.user_id == user_id,
             BodyMeasurement.weight.isnot(None),
-            BodyMeasurement.measurement_date <= thirty_days_ago,
+            BodyMeasurement.measurement_date <= thirty_days_ago_bm,
         ).order_by(BodyMeasurement.measurement_date.desc()).first()
 
         if old_measurement:
@@ -209,7 +404,9 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     else:
         lines.append("No body weight data logged yet.")
 
-    # --- Supplements ---
+    # ================================================================
+    # SUPPLEMENTS
+    # ================================================================
     lines.append(f"\n--- SUPPLEMENTS ---")
 
     active_supplements = db.query(Supplement).filter(
@@ -218,14 +415,12 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     ).all()
 
     if active_supplements:
-        # List active supplements
         supp_list = []
         for s in active_supplements:
             dosage_str = f" ({s.dosage})" if s.dosage else ""
             supp_list.append(f"{s.name}{dosage_str}")
         lines.append(f"Active supplements: {', '.join(supp_list)}")
 
-        # Today's intake
         today_logs = db.query(SupplementLog).filter(
             SupplementLog.user_id == user_id,
             SupplementLog.log_date == today,
@@ -239,7 +434,6 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
             today_status.append(f"{s.name}: {status}")
         lines.append(f"Today's supplement intake: {', '.join(today_status)}")
 
-        # Weekly adherence
         week_total_possible = len(active_supplements) * 7
         week_logs = db.query(SupplementLog).filter(
             SupplementLog.user_id == user_id,
@@ -271,8 +465,9 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
     system_prompt = coach["system_prompt"]
 
     user_prompt = (
-        f"Here is the user's recent fitness data. Based on this data, "
-        f"give them one personalized coaching insight:\n\n{user_data}"
+        f"Here is the user's fitness data, including both recent activity and historical trends. "
+        f"Based on this data, give them one personalized coaching insight with a specific, "
+        f"actionable suggestion to improve their diet or workout routine:\n\n{user_data}"
     )
 
     try:
@@ -318,7 +513,7 @@ async def get_coaching_insight(
         UserSettings.user_id == current_user.id
     ).first()
 
-    coach_type = user_settings.coach_type if user_settings else "arnold"
+    coach_type = user_settings.coach_type if user_settings else "old_school"
     coach = get_coach(coach_type)
     today = date.today()
 
