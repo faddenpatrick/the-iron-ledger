@@ -148,7 +148,7 @@ EXERCISES = [
     {"name": "Kettlebell Push-Up", "muscle_group": "Chest", "equipment": "Kettlebell"},
     {"name": "Kettlebell Fly", "muscle_group": "Chest", "equipment": "Kettlebell"},
 
-    # ===== CABLE / BAND EXERCISES (25) =====
+    # ===== CABLE / BAND EXERCISES (35) =====
     # Shoulders
     {"name": "Face Pull", "muscle_group": "Shoulders", "equipment": "Cable"},
     {"name": "Cable Lateral Raise", "muscle_group": "Shoulders", "equipment": "Cable"},
@@ -158,10 +158,16 @@ EXERCISES = [
 
     # Arms
     {"name": "Cable Tricep Pushdown", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "Rope Tricep Pushdown", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "Straight Bar Tricep Pushdown", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "V-Bar Tricep Pushdown", "muscle_group": "Arms", "equipment": "Cable"},
     {"name": "Cable Overhead Tricep Extension", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "Rope Overhead Tricep Extension", "muscle_group": "Arms", "equipment": "Cable"},
     {"name": "Cable Curl", "muscle_group": "Arms", "equipment": "Cable"},
     {"name": "Cable Hammer Curl", "muscle_group": "Arms", "equipment": "Cable"},
     {"name": "Cable Reverse Curl", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "Cable Preacher Curl", "muscle_group": "Arms", "equipment": "Cable"},
+    {"name": "Single-Arm Cable Curl", "muscle_group": "Arms", "equipment": "Cable"},
 
     # Chest
     {"name": "Cable Fly", "muscle_group": "Chest", "equipment": "Cable"},
@@ -171,9 +177,13 @@ EXERCISES = [
     # Back
     {"name": "Cable Row", "muscle_group": "Back", "equipment": "Cable"},
     {"name": "Cable Lat Pulldown", "muscle_group": "Back", "equipment": "Cable"},
+    {"name": "Wide-Grip Lat Pulldown", "muscle_group": "Back", "equipment": "Cable"},
+    {"name": "Close-Grip Lat Pulldown", "muscle_group": "Back", "equipment": "Cable"},
+    {"name": "Reverse-Grip Lat Pulldown", "muscle_group": "Back", "equipment": "Cable"},
     {"name": "Cable Straight-Arm Pulldown", "muscle_group": "Back", "equipment": "Cable"},
     {"name": "Cable Close-Grip Row", "muscle_group": "Back", "equipment": "Cable"},
     {"name": "Cable Single-Arm Row", "muscle_group": "Back", "equipment": "Cable"},
+    {"name": "Cable Face Pull (Back)", "muscle_group": "Back", "equipment": "Cable"},
 
     # Core
     {"name": "Cable Woodchop", "muscle_group": "Core", "equipment": "Cable"},
