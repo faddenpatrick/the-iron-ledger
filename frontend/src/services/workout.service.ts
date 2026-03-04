@@ -414,6 +414,19 @@ export const deleteSet = async (
   await api.delete(`/workouts/${workoutId}/sets/${setId}`);
 };
 
+// Swap Exercise
+export const swapExercise = async (
+  workoutId: string,
+  oldExerciseId: string,
+  newExerciseId: string
+): Promise<Workout> => {
+  const response = await api.post(`/workouts/${workoutId}/swap-exercise`, {
+    old_exercise_id: oldExerciseId,
+    new_exercise_id: newExerciseId,
+  });
+  return response.data;
+};
+
 // Weekly Stats
 export const getWorkoutWeeklyStats = async (
   endDate: string

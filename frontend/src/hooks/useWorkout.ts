@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Workout } from '../types/workout';
-import { getWorkout, addSet, updateSet, deleteSet } from '../services/workout.service';
+import { getWorkout, addSet, updateSet, deleteSet, swapExercise as swapExerciseApi } from '../services/workout.service';
 
 export const useWorkout = (workoutId: string | null) => {
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -95,6 +95,19 @@ export const useWorkout = (workoutId: string | null) => {
     }
   };
 
+  const swapExerciseInWorkout = async (oldExerciseId: string, newExerciseId: string) => {
+    if (!workoutId) return;
+
+    try {
+      const updatedWorkout = await swapExerciseApi(workoutId, oldExerciseId, newExerciseId);
+      setWorkout(updatedWorkout);
+      return updatedWorkout;
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to swap exercise');
+      throw err;
+    }
+  };
+
   const logTallyReps = async (exerciseId: string, reps: number) => {
     if (!workoutId || !workout) return;
 
@@ -135,6 +148,7 @@ export const useWorkout = (workoutId: string | null) => {
     addNewSet,
     updateExistingSet,
     removeSet,
+    swapExerciseInWorkout,
     logTallyReps,
   };
 };

@@ -25,6 +25,7 @@ from ...schemas.workout import (
     SetUpdate,
     SetResponse,
     SaveAsTemplateRequest,
+    SwapExerciseRequest,
     PreviousPerformanceResponse,
     PreviousSetData,
     WorkoutWeeklyStatsResponse,
@@ -429,6 +430,69 @@ def complete_workout(
 
     db.commit()
     db.refresh(workout)
+
+    return workout
+
+
+@router.post("/{workout_id}/swap-exercise", response_model=WorkoutResponse)
+def swap_exercise(
+    workout_id: UUID,
+    swap_data: SwapExerciseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Swap one exercise for another in an active workout."""
+    workout = db.query(Workout).filter(
+        Workout.id == workout_id,
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None)
+    ).first()
+
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workout not found"
+        )
+
+    # Verify new exercise exists and user has access
+    new_exercise = db.query(Exercise).filter(
+        Exercise.id == swap_data.new_exercise_id,
+        Exercise.deleted_at.is_(None),
+        or_(
+            Exercise.is_custom == False,
+            Exercise.user_id == current_user.id
+        )
+    ).first()
+
+    if not new_exercise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New exercise not found"
+        )
+
+    # Update all sets for the old exercise in this workout
+    sets_to_update = db.query(Set).filter(
+        Set.workout_id == workout_id,
+        Set.exercise_id == swap_data.old_exercise_id
+    ).all()
+
+    if not sets_to_update:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No sets found for the specified exercise in this workout"
+        )
+
+    for set_obj in sets_to_update:
+        set_obj.exercise_id = swap_data.new_exercise_id
+        set_obj.exercise_name_snapshot = new_exercise.name
+
+    workout.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    # Reload workout with sets
+    workout = db.query(Workout).options(
+        joinedload(Workout.sets)
+    ).filter(Workout.id == workout_id).first()
 
     return workout
 

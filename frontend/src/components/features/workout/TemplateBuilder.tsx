@@ -46,6 +46,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   });
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [swapIndex, setSwapIndex] = useState<number | null>(null);
 
   // Drag state
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -66,6 +67,17 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     };
     setExercises([...exercises, newExercise]);
     setShowExerciseSelector(false);
+  };
+
+  const handleSwapExercise = (newExercise: Exercise) => {
+    if (swapIndex === null) return;
+    const updated = [...exercises];
+    updated[swapIndex] = {
+      ...updated[swapIndex],
+      exercise: newExercise,
+    };
+    setExercises(updated);
+    setSwapIndex(null);
   };
 
   const handleUpdateExercise = (
@@ -462,13 +474,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       </div>
                     </div>
 
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleRemoveExercise(index)}
-                      className="px-3 py-1 text-red-400 hover:text-red-300"
-                    >
-                      🗑️
-                    </button>
+                    {/* Swap + Delete buttons */}
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => setSwapIndex(index)}
+                        className="px-3 py-1 text-xs text-gray-400 hover:text-white bg-gray-600 hover:bg-gray-500 rounded"
+                        title="Swap exercise"
+                      >
+                        Swap
+                      </button>
+                      <button
+                        onClick={() => handleRemoveExercise(index)}
+                        className="px-3 py-1 text-red-400 hover:text-red-300"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -490,11 +511,19 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           </button>
         </div>
 
-        {/* Exercise Selector Modal */}
+        {/* Exercise Selector Modal (Add) */}
         {showExerciseSelector && (
           <ExerciseSelector
             onSelect={handleAddExercise}
             onClose={() => setShowExerciseSelector(false)}
+          />
+        )}
+
+        {/* Exercise Selector Modal (Swap) */}
+        {swapIndex !== null && (
+          <ExerciseSelector
+            onSelect={handleSwapExercise}
+            onClose={() => setSwapIndex(null)}
           />
         )}
       </div>
