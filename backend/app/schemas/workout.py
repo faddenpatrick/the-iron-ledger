@@ -115,6 +115,12 @@ class PreviousPerformanceResponse(BaseModel):
     previous_total_reps: Optional[int] = None
 
 
+class SwapExerciseRequest(BaseModel):
+    """Swap one exercise for another in an active workout."""
+    old_exercise_id: UUID
+    new_exercise_id: UUID
+
+
 class WorkoutWeeklyStatsResponse(BaseModel):
     """7-day workout statistics summary."""
     start_date: date

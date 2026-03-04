@@ -40,7 +40,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   onComplete,
   onCancel,
 }) => {
-  const { workout, loading, addNewSet, updateExistingSet, removeSet, logTallyReps } = useWorkout(workoutId);
+  const { workout, loading, addNewSet, updateExistingSet, removeSet, swapExerciseInWorkout, logTallyReps } = useWorkout(workoutId);
   const restTimer = useRestTimer(60);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -54,6 +54,8 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const [templateExerciseMap, setTemplateExerciseMap] = useState<
     Record<string, { tally_mode: boolean; target_reps: number | null; exercise_name: string }>
   >({});
+  const [exerciseOrder, setExerciseOrder] = useState<string[]>([]);
+  const [swapTarget, setSwapTarget] = useState<string | null>(null);
 
   // Fetch template metadata for tally mode info
   useEffect(() => {
@@ -103,7 +105,22 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     }
   }
 
-  const exercises = Object.values(allGroups);
+  // Sync exerciseOrder with current groups (preserve user reordering, append new)
+  const allGroupKeys = Object.keys(allGroups);
+  const allGroupKeysKey = allGroupKeys.join(',');
+  useEffect(() => {
+    setExerciseOrder((prev) => {
+      const kept = prev.filter((id) => allGroupKeys.includes(id));
+      const newIds = allGroupKeys.filter((id) => !kept.includes(id));
+      if (newIds.length === 0 && kept.length === prev.length) return prev;
+      return [...kept, ...newIds];
+    });
+  }, [allGroupKeysKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sort exercises by user-controlled order
+  const exercises = exerciseOrder
+    .filter((id) => allGroups[id])
+    .map((id) => allGroups[id]);
 
   // Fetch previous performance for all exercises when workout loads
   useEffect(() => {
@@ -216,6 +233,43 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     }
   };
 
+  const handleMoveExercise = (exerciseId: string, direction: 'up' | 'down') => {
+    setExerciseOrder((prev) => {
+      const idx = prev.indexOf(exerciseId);
+      if (idx === -1) return prev;
+      if (direction === 'up' && idx === 0) return prev;
+      if (direction === 'down' && idx === prev.length - 1) return prev;
+      const newOrder = [...prev];
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      [newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]];
+      return newOrder;
+    });
+  };
+
+  const handleSwapExercise = async (newExercise: Exercise) => {
+    if (!swapTarget || !workout) return;
+    try {
+      await swapExerciseInWorkout(swapTarget, newExercise.id);
+      // Update exerciseOrder to replace old ID with new
+      setExerciseOrder((prev) => prev.map((id) => (id === swapTarget ? newExercise.id : id)));
+      // Fetch previous performance for the new exercise
+      if (!previousPerformance[newExercise.id]) {
+        try {
+          const previous = await getPreviousPerformance(workoutId, newExercise.id);
+          setPreviousPerformance((prev) => ({
+            ...prev,
+            [newExercise.id]: previous,
+          }));
+        } catch (error) {
+          console.error('Failed to fetch previous performance:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to swap exercise:', error);
+    }
+    setSwapTarget(null);
+  };
+
   /** Compare the workout as performed against the saved template */
   const detectRoutineChanges = async (): Promise<RoutineChange[]> => {
     if (!workout?.template_id) return [];
@@ -224,8 +278,10 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       const template = await getTemplate(workout.template_id);
       const changes: RoutineChange[] = [];
 
-      // Build workout exercise order from sets
-      const workoutExerciseOrder: string[] = [];
+      // Build workout exercise order from exerciseOrder state (respects user reordering)
+      const workoutExerciseOrder = exerciseOrder.filter((id) =>
+        workout.sets.some((s) => s.exercise_id === id)
+      );
       const workoutExerciseSets: Record<string, number> = {};
       const workoutExerciseWeights: Record<string, number> = {};
       const workoutExerciseNames: Record<string, string> = {};
@@ -357,16 +413,21 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
     setUpdatingRoutine(true);
     try {
-      // Build new template exercises from the workout as performed
-      const exerciseOrder: string[] = [];
+      // Build new template exercises using user-controlled exercise order
+      const orderedExerciseIds = exerciseOrder.filter((id) =>
+        workout.sets.some((s) => s.exercise_id === id)
+      );
+      // Include any exercise IDs from sets not yet in exerciseOrder
+      for (const set of workout.sets) {
+        if (!orderedExerciseIds.includes(set.exercise_id)) {
+          orderedExerciseIds.push(set.exercise_id);
+        }
+      }
       const exerciseSets: Record<string, number> = {};
       const exerciseWeights: Record<string, number> = {};
       const exerciseReps: Record<string, number> = {};
 
       for (const set of workout.sets) {
-        if (!exerciseOrder.includes(set.exercise_id)) {
-          exerciseOrder.push(set.exercise_id);
-        }
         exerciseSets[set.exercise_id] = (exerciseSets[set.exercise_id] || 0) + 1;
         // Use the last completed set's weight and reps as the target
         if (set.is_completed) {
@@ -375,7 +436,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         }
       }
 
-      const newExercises: TemplateExerciseRequest[] = exerciseOrder.map((exerciseId, index) => {
+      const newExercises: TemplateExerciseRequest[] = orderedExerciseIds.map((exerciseId, index) => {
         const meta = templateExerciseMap[exerciseId];
         if (meta?.tally_mode) {
           const totalReps = workout.sets
@@ -488,10 +549,37 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           const best1RM = isTallyMode ? 0 : getBest1RM(group.exerciseId);
           const isPersonalRecord = isTallyMode ? false : isPR(group.exerciseId);
 
+          const exerciseIndex = exercises.indexOf(group);
+
           return (
             <div key={group.exerciseId} className="card">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-lg">{group.exerciseName}</h3>
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      onClick={() => handleMoveExercise(group.exerciseId, 'up')}
+                      disabled={exerciseIndex === 0}
+                      className="px-2 py-0.5 text-xs bg-gray-600 hover:bg-gray-500 disabled:opacity-30 rounded"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => handleMoveExercise(group.exerciseId, 'down')}
+                      disabled={exerciseIndex === exercises.length - 1}
+                      className="px-2 py-0.5 text-xs bg-gray-600 hover:bg-gray-500 disabled:opacity-30 rounded"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <h3 className="font-semibold text-lg">{group.exerciseName}</h3>
+                  <button
+                    onClick={() => setSwapTarget(group.exerciseId)}
+                    className="text-xs text-gray-400 hover:text-white px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 rounded"
+                    title="Swap exercise"
+                  >
+                    Swap
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   {!isTallyMode && best1RM > 0 && (
                     <div className="text-sm text-gray-400">
@@ -579,11 +667,19 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         </button>
       </div>
 
-      {/* Exercise Selector Modal */}
+      {/* Exercise Selector Modal (Add) */}
       {showExerciseSelector && (
         <ExerciseSelector
           onSelect={handleAddExercise}
           onClose={() => setShowExerciseSelector(false)}
+        />
+      )}
+
+      {/* Exercise Selector Modal (Swap) */}
+      {swapTarget && (
+        <ExerciseSelector
+          onSelect={handleSwapExercise}
+          onClose={() => setSwapTarget(null)}
         />
       )}
 
