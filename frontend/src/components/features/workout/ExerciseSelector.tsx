@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Exercise } from '../../../types/workout';
-import { getExercises } from '../../../services/workout.service';
+import { getExercises, createExercise } from '../../../services/workout.service';
 
 interface ExerciseSelectorProps {
   onSelect: (exercise: Exercise) => void;
   onClose: () => void;
 }
+
+const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
+const equipmentOptions = ['Barbell', 'Dumbbell', 'Bodyweight', 'Cable', 'Machine', 'Kettlebell', 'Band', 'Other'];
 
 export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
   onSelect,
@@ -15,6 +18,11 @@ export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
   const [search, setSearch] = useState('');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newMuscleGroup, setNewMuscleGroup] = useState('');
+  const [newEquipment, setNewEquipment] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     loadExercises();
@@ -35,7 +43,30 @@ export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     }
   };
 
-  const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
+  const handleCreate = async () => {
+    const trimmedName = newName.trim();
+    if (!trimmedName) return;
+
+    setCreating(true);
+    try {
+      const exercise = await createExercise({
+        name: trimmedName,
+        muscle_group: newMuscleGroup || undefined,
+        equipment: newEquipment || undefined,
+      });
+      onSelect(exercise);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create exercise:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openCreateForm = () => {
+    setNewName(search);
+    setShowCreateForm(true);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
@@ -43,82 +74,160 @@ export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
         {/* Header */}
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Select Exercise</h2>
+            <h2 className="text-xl font-bold">
+              {showCreateForm ? 'Create Custom Exercise' : 'Select Exercise'}
+            </h2>
             <button
-              onClick={onClose}
+              onClick={showCreateForm ? () => setShowCreateForm(false) : onClose}
               className="text-gray-400 hover:text-white text-2xl"
             >
-              ×
+              {showCreateForm ? '←' : '×'}
             </button>
           </div>
 
-          {/* Search */}
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search exercises..."
-            className="input mb-3"
-            autoFocus
-          />
-
-          {/* Muscle Group Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <button
-              onClick={() => setSelectedMuscleGroup('')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
-                selectedMuscleGroup === ''
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-700 text-gray-300'
-              }`}
-            >
-              All
-            </button>
-            {muscleGroups.map((group) => (
+          {showCreateForm ? (
+            /* Create Custom Exercise Form */
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Exercise Name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Zercher Squat"
+                  className="input"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Muscle Group</label>
+                <select
+                  value={newMuscleGroup}
+                  onChange={(e) => setNewMuscleGroup(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Select muscle group (optional)</option>
+                  {muscleGroups.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Equipment</label>
+                <select
+                  value={newEquipment}
+                  onChange={(e) => setNewEquipment(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Select equipment (optional)</option>
+                  {equipmentOptions.map((e) => (
+                    <option key={e} value={e}>{e}</option>
+                  ))}
+                </select>
+              </div>
               <button
-                key={group}
-                onClick={() => setSelectedMuscleGroup(group)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
-                  selectedMuscleGroup === group
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-700 text-gray-300'
-                }`}
+                onClick={handleCreate}
+                disabled={!newName.trim() || creating}
+                className="btn-primary w-full disabled:opacity-50"
               >
-                {group}
+                {creating ? 'Creating...' : 'Create & Select'}
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Exercise List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {loading ? (
-            <div className="text-center py-8 text-gray-400">Loading...</div>
-          ) : exercises.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              No exercises found
             </div>
           ) : (
-            exercises.map((exercise) => (
-              <button
-                key={exercise.id}
-                onClick={() => {
-                  onSelect(exercise);
-                  onClose();
-                }}
-                className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-              >
-                <div className="font-medium">{exercise.name}</div>
-                <div className="text-sm text-gray-400 mt-1">
-                  {exercise.muscle_group && (
-                    <span className="mr-3">🎯 {exercise.muscle_group}</span>
-                  )}
-                  {exercise.equipment && <span>🏋️ {exercise.equipment}</span>}
-                </div>
-              </button>
-            ))
+            <>
+              {/* Search */}
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search exercises..."
+                className="input mb-3"
+                autoFocus
+              />
+
+              {/* Muscle Group Filter */}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <button
+                  onClick={() => setSelectedMuscleGroup('')}
+                  className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+                    selectedMuscleGroup === ''
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-700 text-gray-300'
+                  }`}
+                >
+                  All
+                </button>
+                {muscleGroups.map((group) => (
+                  <button
+                    key={group}
+                    onClick={() => setSelectedMuscleGroup(group)}
+                    className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+                      selectedMuscleGroup === group
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-700 text-gray-300'
+                    }`}
+                  >
+                    {group}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
+
+        {/* Exercise List / Create Form Body */}
+        {!showCreateForm && (
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {/* Create Custom Exercise Button */}
+            <button
+              onClick={openCreateForm}
+              className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors border border-dashed border-gray-500"
+            >
+              <div className="font-medium text-primary-400">
+                + Create Custom Exercise
+              </div>
+              {search && (
+                <div className="text-sm text-gray-400 mt-1">
+                  Create &quot;{search}&quot; as a new exercise
+                </div>
+              )}
+            </button>
+
+            {loading ? (
+              <div className="text-center py-8 text-gray-400">Loading...</div>
+            ) : exercises.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                No exercises found — create your own above
+              </div>
+            ) : (
+              exercises.map((exercise) => (
+                <button
+                  key={exercise.id}
+                  onClick={() => {
+                    onSelect(exercise);
+                    onClose();
+                  }}
+                  className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  <div className="font-medium">
+                    {exercise.name}
+                    {exercise.is_custom && (
+                      <span className="ml-2 text-xs bg-primary-600 text-white px-2 py-0.5 rounded-full">
+                        Custom
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-400 mt-1">
+                    {exercise.muscle_group && (
+                      <span className="mr-3">{exercise.muscle_group}</span>
+                    )}
+                    {exercise.equipment && <span>{exercise.equipment}</span>}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
