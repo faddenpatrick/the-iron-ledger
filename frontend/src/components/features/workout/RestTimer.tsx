@@ -8,14 +8,8 @@ interface RestTimerProps {
   pause: () => void;
   resume: () => void;
   skip: () => void;
+  defaultSeconds: number;
 }
-
-const PRESET_DURATIONS = [
-  { label: '60s', seconds: 60 },
-  { label: '90s', seconds: 90 },
-  { label: '2m', seconds: 120 },
-  { label: '3m', seconds: 180 },
-];
 
 export const RestTimer: React.FC<RestTimerProps> = ({
   timeRemaining,
@@ -25,10 +19,16 @@ export const RestTimer: React.FC<RestTimerProps> = ({
   pause,
   resume,
   skip,
+  defaultSeconds,
 }) => {
+  const [selectedSeconds, setSelectedSeconds] = useState(defaultSeconds);
   const [showPresets, setShowPresets] = useState(true);
-  const [customSeconds, setCustomSeconds] = useState('60');
   const [justCompleted, setJustCompleted] = useState(false);
+
+  // Sync selectedSeconds when defaultSeconds changes
+  useEffect(() => {
+    setSelectedSeconds(defaultSeconds);
+  }, [defaultSeconds]);
 
   // Flash green when timer completes
   useEffect(() => {
@@ -50,16 +50,19 @@ export const RestTimer: React.FC<RestTimerProps> = ({
     }
   }, [timeRemaining, isActive]);
 
-  const handleStartTimer = (seconds: number) => {
-    start(seconds);
+  const handleAdjust = (delta: number) => {
+    setSelectedSeconds((prev) => Math.max(15, Math.min(600, prev + delta)));
+  };
+
+  const handleStartTimer = () => {
+    start(selectedSeconds);
     setShowPresets(false);
   };
 
-  const handleCustomStart = () => {
-    const seconds = parseInt(customSeconds);
-    if (seconds > 0 && seconds <= 600) {
-      handleStartTimer(seconds);
-    }
+  const formatDisplay = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   if (timeRemaining === 0 && !justCompleted) {
@@ -79,37 +82,30 @@ export const RestTimer: React.FC<RestTimerProps> = ({
           <div className="space-y-3">
             <div className="text-center text-sm font-medium mb-2">Rest Timer</div>
 
-            {/* Preset Buttons */}
-            <div className="grid grid-cols-4 gap-2">
-              {PRESET_DURATIONS.map((preset) => (
-                <button
-                  key={preset.seconds}
-                  onClick={() => handleStartTimer(preset.seconds)}
-                  className="px-3 py-2 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Input */}
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={customSeconds}
-                onChange={(e) => setCustomSeconds(e.target.value)}
-                placeholder="Custom (s)"
-                className="flex-1 px-3 py-2 bg-white text-gray-900 rounded-lg text-center font-medium"
-                min="1"
-                max="600"
-              />
+            <div className="flex items-center justify-center gap-3">
               <button
-                onClick={handleCustomStart}
-                className="px-4 py-2 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+                onClick={() => handleAdjust(-15)}
+                className="w-12 h-12 bg-white text-primary-600 rounded-lg font-bold text-xl hover:bg-gray-100 transition-colors flex items-center justify-center"
               >
-                Start
+                -
+              </button>
+              <div className="text-3xl font-bold min-w-[5rem] text-center">
+                {formatDisplay(selectedSeconds)}
+              </div>
+              <button
+                onClick={() => handleAdjust(15)}
+                className="w-12 h-12 bg-white text-primary-600 rounded-lg font-bold text-xl hover:bg-gray-100 transition-colors flex items-center justify-center"
+              >
+                +
               </button>
             </div>
+
+            <button
+              onClick={handleStartTimer}
+              className="w-full py-2 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              Start
+            </button>
           </div>
         ) : (
           <div className="flex items-center justify-between">

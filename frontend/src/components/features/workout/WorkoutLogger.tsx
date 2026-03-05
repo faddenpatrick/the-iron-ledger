@@ -15,6 +15,7 @@ import { SetRow } from './SetRow';
 import { TallyExercise } from './TallyExercise';
 import { RestTimer } from './RestTimer';
 import { PRBadge } from './PRBadge';
+import { useSettings } from '../../../hooks/useSettings';
 
 // Brzycki formula for 1RM calculation
 const calculate1RM = (weight: number, reps: number): number => {
@@ -41,7 +42,9 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   onCancel,
 }) => {
   const { workout, loading, addNewSet, updateExistingSet, removeSet, swapExerciseInWorkout, logTallyReps } = useWorkout(workoutId);
-  const restTimer = useRestTimer(60);
+  const { settings } = useSettings();
+  const defaultRestSeconds = settings?.default_rest_timer ?? 60;
+  const restTimer = useRestTimer(defaultRestSeconds);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -786,6 +789,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         pause={restTimer.pause}
         resume={restTimer.resume}
         skip={restTimer.skip}
+        defaultSeconds={defaultRestSeconds}
       />
     </div>
   );
