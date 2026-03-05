@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Meal, MealCategory, MealItem as MealItemType, Food } from '../../../types/nutrition';
 import { getMeal, getMealCategories, updateMealType, deleteMealItem, addMealItem, createFood, updateMealItemServings } from '../../../services/nutrition.service';
 import { format } from 'date-fns';
@@ -28,19 +28,31 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
   const [editingCategory, setEditingCategory] = useState(false);
   const [updatingCategory, setUpdatingCategory] = useState(false);
 
-  useEffect(() => {
-    loadMeal();
-    loadCategories();
-  }, [mealId]);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const data = await getMealCategories();
       setCategories(data);
     } catch (error) {
       console.error('Failed to load categories:', error);
     }
-  };
+  }, []);
+
+  const loadMeal = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getMeal(mealId);
+      setMeal(data);
+    } catch (error) {
+      console.error('Failed to load meal:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [mealId]);
+
+  useEffect(() => {
+    loadMeal();
+    loadCategories();
+  }, [loadMeal, loadCategories]);
 
   const handleCategoryChange = async (categoryId: string) => {
     if (!meal || categoryId === meal.category_id) {
@@ -59,18 +71,6 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
       alert('Failed to update meal type');
     } finally {
       setUpdatingCategory(false);
-    }
-  };
-
-  const loadMeal = async () => {
-    setLoading(true);
-    try {
-      const data = await getMeal(mealId);
-      setMeal(data);
-    } catch (error) {
-      console.error('Failed to load meal:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -101,7 +101,7 @@ export const MealDetailViewer: React.FC<MealDetailViewerProps> = ({
       let foodId = selectedFood.id;
 
       // Check if this is an OpenFoodFacts food that needs to be saved
-      if ((selectedFood as any)._source === 'openfoodfacts') {
+      if ('_source' in selectedFood && selectedFood._source === 'openfoodfacts') {
         // Save to database first
         const savedFood = await createFood({
           name: selectedFood.name,

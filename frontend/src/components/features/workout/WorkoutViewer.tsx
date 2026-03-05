@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Workout } from '../../../types/workout';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Workout, Set as WorkoutSet } from '../../../types/workout';
 import { getWorkout } from '../../../services/workout.service';
 import { format } from 'date-fns';
 
@@ -15,11 +15,7 @@ export const WorkoutViewer: React.FC<WorkoutViewerProps> = ({
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadWorkout();
-  }, [workoutId]);
-
-  const loadWorkout = async () => {
+  const loadWorkout = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getWorkout(workoutId);
@@ -29,7 +25,11 @@ export const WorkoutViewer: React.FC<WorkoutViewerProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workoutId]);
+
+  useEffect(() => {
+    loadWorkout();
+  }, [loadWorkout]);
 
   // Group sets by exercise
   const exerciseGroups = workout?.sets.reduce((acc, set) => {
@@ -43,7 +43,7 @@ export const WorkoutViewer: React.FC<WorkoutViewerProps> = ({
     }
     acc[exerciseId].sets.push(set);
     return acc;
-  }, {} as Record<string, { exerciseId: string; exerciseName: string; sets: any[] }>);
+  }, {} as Record<string, { exerciseId: string; exerciseName: string; sets: WorkoutSet[] }>);
 
   const exercises = exerciseGroups ? Object.values(exerciseGroups) : [];
 

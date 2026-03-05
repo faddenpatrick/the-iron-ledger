@@ -69,10 +69,11 @@ export const WorkoutPage: React.FC = () => {
       localStorage.setItem(ACTIVE_WORKOUT_KEY, workout.id);
       setActiveWorkoutId(workout.id);
       setActiveTab('active');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to start workout:', error);
-      console.error('Error details:', error.message, error.stack);
-      alert(`Failed to start workout: ${error.message || 'Unknown error'}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (error instanceof Error) console.error('Error details:', error.message, error.stack);
+      alert(`Failed to start workout: ${message}`);
     }
   };
 
@@ -91,10 +92,11 @@ export const WorkoutPage: React.FC = () => {
       localStorage.setItem(ACTIVE_WORKOUT_KEY, workout.id);
       setActiveWorkoutId(workout.id);
       setActiveTab('active');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to start workout:', error);
-      console.error('Error details:', error.message, error.stack);
-      alert(`Failed to start workout: ${error.message || 'Unknown error'}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (error instanceof Error) console.error('Error details:', error.message, error.stack);
+      alert(`Failed to start workout: ${message}`);
     }
   };
 

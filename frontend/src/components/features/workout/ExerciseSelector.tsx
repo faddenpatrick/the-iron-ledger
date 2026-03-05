@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Exercise } from '../../../types/workout';
 import { getExercises, createExercise } from '../../../services/workout.service';
 
@@ -24,11 +24,7 @@ export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
   const [newEquipment, setNewEquipment] = useState('');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    loadExercises();
-  }, [search, selectedMuscleGroup]);
-
-  const loadExercises = async () => {
+  const loadExercises = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getExercises({
@@ -41,7 +37,11 @@ export const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, selectedMuscleGroup]);
+
+  useEffect(() => {
+    loadExercises();
+  }, [loadExercises]);
 
   const handleCreate = async () => {
     const trimmedName = newName.trim();

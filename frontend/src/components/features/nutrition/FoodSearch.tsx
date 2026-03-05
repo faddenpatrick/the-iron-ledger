@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Food } from '../../../types/nutrition';
 import { getFoods, createFood } from '../../../services/nutrition.service';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -26,11 +26,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
     fat: '',
   });
 
-  useEffect(() => {
-    loadFoods();
-  }, [search, includeOFF]);
-
-  const loadFoods = async () => {
+  const loadFoods = useCallback(async () => {
     setLoading(true);
     try {
       const localData = await getFoods(search || undefined);
@@ -40,7 +36,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
           const response = await api.get('/openfoodfacts/search', {
             params: { q: search, page_size: 20 },
           });
-          const offFoods = response.data.products.map((p: any) => ({
+          const offFoods = response.data.products.map((p: { barcode: string; name: string; serving_size?: string; calories: number; protein: number; carbs: number; fat: number }) => ({
             id: p.barcode,
             name: p.name,
             serving_size: p.serving_size || '100g',
@@ -69,7 +65,11 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, includeOFF]);
+
+  useEffect(() => {
+    loadFoods();
+  }, [loadFoods]);
 
   const handleBarcodeScanned = async (barcode: string) => {
     setShowBarcodeScanner(false);
@@ -79,7 +79,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
       const response = await api.get(`/openfoodfacts/barcode/${barcode}`);
       const product = response.data;
 
-      const food: any = {
+      const food: Food & { _source: string; _barcode: string } = {
         id: product.barcode,
         name: product.name,
         serving_size: product.serving_size || '100g',
@@ -97,9 +97,12 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
 
       onSelect(food);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to lookup barcode:', error);
-      alert(error?.response?.data?.detail || 'Product not found in database. Try searching manually or create a custom food.');
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      alert(detail || 'Product not found in database. Try searching manually or create a custom food.');
     } finally {
       setLoading(false);
     }
@@ -126,9 +129,12 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
       });
       onSelect(newFood);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create food:', error);
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Failed to create custom food';
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      const errorMsg = detail || (error instanceof Error ? error.message : 'Failed to create custom food');
       alert(`Error: ${errorMsg}`);
     }
   };
@@ -303,7 +309,7 @@ export const FoodSearch: React.FC<FoodSearchProps> = ({ onSelect, onClose }) => 
               </div>
             ) : (
               foods.map((food) => {
-                const isOFF = (food as any)._source === 'openfoodfacts';
+                const isOFF = '_source' in food && food._source === 'openfoodfacts';
                 return (
                   <button
                     key={food.id}

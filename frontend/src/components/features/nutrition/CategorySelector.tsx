@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MealCategory } from '../../../types/nutrition';
 import { getMealCategories, createMealCategory, updateMealCategory, deleteMealCategory } from '../../../services/nutrition.service';
 
@@ -19,11 +19,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const [editName, setEditName] = useState('');
   const [manageMode, setManageMode] = useState(false);
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getMealCategories();
@@ -38,7 +34,11 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategoryId, onSelectCategory]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -52,9 +52,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       setNewCategoryName('');
       setShowCreateModal(false);
       onSelectCategory(newCategory.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create category:', error);
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      const errorMsg = detail || (error instanceof Error ? error.message : 'Unknown error');
       alert(`Failed to create category: ${errorMsg}`);
     }
   };
@@ -69,9 +72,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       ));
       setEditingId(null);
       setEditName('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update category:', error);
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      const errorMsg = detail || (error instanceof Error ? error.message : 'Unknown error');
       alert(`Failed to update category: ${errorMsg}`);
     }
   };
@@ -90,9 +96,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       if (selectedCategoryId === id && updatedCategories.length > 0) {
         onSelectCategory(updatedCategories[0].id);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete category:', error);
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Unknown error';
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      const errorMsg = detail || (error instanceof Error ? error.message : 'Unknown error');
       alert(`Failed to delete category: ${errorMsg}`);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { WorkoutList } from '../../../types/workout';
 import { getWorkouts, deleteWorkout } from '../../../services/workout.service';
 import { format, subDays, startOfWeek } from 'date-fns';
@@ -19,11 +19,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadWorkouts();
-  }, [workoutType, timeFilter]);
-
-  const loadWorkouts = async () => {
+  const loadWorkouts = useCallback(async () => {
     setLoading(true);
     try {
       const now = new Date();
@@ -61,7 +57,11 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workoutType, timeFilter]);
+
+  useEffect(() => {
+    loadWorkouts();
+  }, [loadWorkouts]);
 
 
   const formatDuration = (started: string, completed: string): string => {

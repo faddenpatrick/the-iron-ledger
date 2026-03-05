@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Exercise, PreviousPerformance, PreviousSetData, TemplateExerciseRequest } from '../../../types/workout';
+import { Exercise, PreviousPerformance, PreviousSetData, TemplateExerciseRequest, Set as WorkoutSet } from '../../../types/workout';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useRestTimer } from '../../../hooks/useRestTimer';
 import {
@@ -91,7 +91,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     }
     acc[exerciseId].sets.push(set);
     return acc;
-  }, {} as Record<string, { exerciseId: string; exerciseName: string; sets: any[] }>);
+  }, {} as Record<string, { exerciseId: string; exerciseName: string; sets: WorkoutSet[] }>);
 
   // Include tally exercises from template that have 0 sets yet
   const allGroups = { ...(exerciseGroups || {}) };
@@ -146,6 +146,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     };
 
     fetchPreviousPerformance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workout?.sets.length]); // Re-fetch when exercises are added
 
   const getPreviousSetData = (exerciseId: string, setNumber: number): PreviousSetData | null => {
