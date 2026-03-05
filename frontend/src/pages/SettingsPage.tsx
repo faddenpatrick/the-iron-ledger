@@ -11,13 +11,18 @@ import {
 } from '../utils/macroCalculations';
 import { COACH_OPTIONS } from '../types/coaching';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { settings, loading, updateSettings } = useSettings();
 
   // PWA Install state
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [debugInfo, setDebugInfo] = useState<{
@@ -102,10 +107,10 @@ export const SettingsPage: React.FC = () => {
     console.log('🔧 PWA Debug: Manifest link found:', manifestLoaded, manifestLink?.getAttribute('href'));
 
     // Listen for install prompt
-    const handleBeforeInstallPrompt = (e: any) => {
+    const handleBeforeInstallPrompt = (e: Event) => {
       console.log('🎉 PWA Debug: beforeinstallprompt event fired!', e);
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
@@ -144,6 +149,7 @@ export const SettingsPage: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize form from settings
@@ -219,8 +225,11 @@ export const SettingsPage: React.FC = () => {
         });
       }
       alert('Macro targets saved!');
-    } catch (error: any) {
-      alert(error?.response?.data?.detail || 'Failed to save macro targets');
+    } catch (error: unknown) {
+      const detail = (error instanceof Error && 'response' in error)
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      alert(detail || 'Failed to save macro targets');
     } finally {
       setSaving(false);
     }
@@ -752,7 +761,7 @@ export const SettingsPage: React.FC = () => {
             Offline-first workout & nutrition tracker
           </p>
           <p className="text-xs text-gray-500 mt-2">
-            Build: {import.meta.env.MODE} • {((window as any).__BUILD_TIME__ || new Date().toISOString()).split('T')[0]}
+            Build: {import.meta.env.MODE} • {(((window as unknown as Record<string, unknown>).__BUILD_TIME__ as string) || new Date().toISOString()).split('T')[0]}
           </p>
           <button
             onClick={() => {

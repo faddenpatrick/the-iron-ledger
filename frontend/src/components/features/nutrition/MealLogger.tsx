@@ -69,7 +69,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({
           let foodId = item.food.id;
 
           // Check if this is an OpenFoodFacts food that needs to be saved
-          if ((item.food as any)._source === 'openfoodfacts') {
+          if ('_source' in item.food && item.food._source === 'openfoodfacts') {
             // Save to database first
             const savedFood = await createFood({
               name: item.food.name,

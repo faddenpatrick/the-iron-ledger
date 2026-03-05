@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface BarcodeScannerProps {
@@ -15,20 +15,22 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
   const [manualBarcode, setManualBarcode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
 
-  // Start the scanner only after the barcode-reader div has been mounted
-  useEffect(() => {
-    if (scannerVisible) {
-      startScanner();
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current && isRunningRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      } finally {
+        isRunningRef.current = false;
+        setIsScanning(false);
+        setScannerVisible(false);
+      }
     }
-  }, [scannerVisible]);
-
-  useEffect(() => {
-    return () => {
-      stopScanner();
-    };
   }, []);
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     setError('');
     try {
       const scanner = new Html5Qrcode('barcode-reader');
@@ -45,7 +47,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           onScan(decodedText);
           stopScanner();
         },
-        (_errorMessage) => {
+        () => {
           // Per-frame scanning errors — ignore, they happen constantly
         }
       );
@@ -68,22 +70,20 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
 
       setError(errorMsg);
     }
-  };
+  }, [onScan, stopScanner]);
 
-  const stopScanner = async () => {
-    if (scannerRef.current && isRunningRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
-      } finally {
-        isRunningRef.current = false;
-        setIsScanning(false);
-        setScannerVisible(false);
-      }
+  // Start the scanner only after the barcode-reader div has been mounted
+  useEffect(() => {
+    if (scannerVisible) {
+      startScanner();
     }
-  };
+  }, [scannerVisible, startScanner]);
+
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, [stopScanner]);
 
   const handleClose = async () => {
     await stopScanner();

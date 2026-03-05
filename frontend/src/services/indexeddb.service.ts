@@ -20,7 +20,7 @@ export interface SyncQueueItem {
   timestamp: number;
   method: 'POST' | 'PUT' | 'DELETE';
   endpoint: string;
-  data?: any;
+  data?: unknown;
   entityType: string;
   entityId?: string;
   synced: boolean;

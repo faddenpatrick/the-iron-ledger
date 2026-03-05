@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WorkoutTemplateList } from '../../../types/workout';
 import { getTemplates, deleteTemplate, updateTemplate } from '../../../services/workout.service';
 
@@ -22,19 +22,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const [editName, setEditName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadTemplates();
-  }, [workoutType]);
-
-  // Focus the input when editing starts
-  useEffect(() => {
-    if (editingId && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [editingId]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getTemplates({ workout_type: workoutType });
@@ -44,7 +32,19 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workoutType]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  // Focus the input when editing starts
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
 
   const handleDelete = async (id: string) => {
     try {

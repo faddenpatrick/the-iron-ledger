@@ -24,8 +24,11 @@ export const LoginPage: React.FC = () => {
         await register({ email, password });
       }
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'An error occurred');
     } finally {
       setLoading(false);
     }

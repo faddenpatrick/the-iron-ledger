@@ -58,8 +58,11 @@ export const AddSupplementForm: React.FC<AddSupplementFormProps> = ({
         });
       }
       onSuccess();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to save supplement');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to save supplement');
     } finally {
       setSaving(false);
     }

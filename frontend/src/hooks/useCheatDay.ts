@@ -13,11 +13,7 @@ export const useCheatDay = (date?: Date) => {
   const selectedDate = date || new Date();
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  useEffect(() => {
-    loadStatus();
-  }, [dateStr]);
-
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
       const status = await getCheatDayStatus(dateStr);
@@ -27,7 +23,11 @@ export const useCheatDay = (date?: Date) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateStr]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const toggle = useCallback(async () => {
     const newValue = !isCheatDay;

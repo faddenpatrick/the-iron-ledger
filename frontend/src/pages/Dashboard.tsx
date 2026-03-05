@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { format } from 'date-fns';
@@ -21,7 +21,7 @@ export const Dashboard: React.FC = () => {
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const fetchTodayData = async () => {
+  const fetchTodayData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -64,12 +64,12 @@ export const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [today]);
 
   // Fetch data on mount and when date changes
   useEffect(() => {
     fetchTodayData();
-  }, [today]);
+  }, [fetchTodayData]);
 
   // Refetch data when page becomes visible (e.g., after navigating back)
   useEffect(() => {
@@ -90,7 +90,7 @@ export const Dashboard: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [today]);
+  }, [fetchTodayData]);
 
   const calculateMacroPercentage = (current: number, target: number | null) => {
     if (!target || target === 0) return 0;

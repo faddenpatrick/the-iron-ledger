@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MealList } from '../../../types/nutrition';
 import { getMeals, deleteMeal, copyMeal } from '../../../services/nutrition.service';
 import { format, isToday } from 'date-fns';
@@ -22,11 +22,7 @@ export const DailyMealList: React.FC<DailyMealListProps> = ({
   const dateStr = format(date, 'yyyy-MM-dd');
   const isTodayDate = isToday(date);
 
-  useEffect(() => {
-    loadMeals();
-  }, [dateStr]);
-
-  const loadMeals = async () => {
+  const loadMeals = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getMeals(dateStr);
@@ -36,7 +32,11 @@ export const DailyMealList: React.FC<DailyMealListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateStr]);
+
+  useEffect(() => {
+    loadMeals();
+  }, [loadMeals]);
 
   const handleDelete = async (id: string) => {
     try {

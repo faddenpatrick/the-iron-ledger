@@ -75,18 +75,18 @@ class SyncService {
         try {
           await this.processSyncItem(item);
           await markAsSynced(item.id!);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Failed to sync item ${item.id}:`, error);
-          await markAsError(item.id!, error.message || 'Unknown error');
+          await markAsError(item.id!, error instanceof Error ? error.message : 'Unknown error');
         }
       }
 
       this.setLastSyncTime(new Date());
       const pendingCount = await this.getPendingCount();
       this.notify({ isSyncing: false, pendingCount });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sync failed:', error);
-      this.notify({ isSyncing: false, error: error.message });
+      this.notify({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
     } finally {
       this.syncInProgress = false;
     }

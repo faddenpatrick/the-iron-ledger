@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Workout } from '../types/workout';
 import { getWorkout, addSet, updateSet, deleteSet, swapExercise as swapExerciseApi } from '../services/workout.service';
 
@@ -7,13 +7,7 @@ export const useWorkout = (workoutId: string | null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (workoutId) {
-      loadWorkout();
-    }
-  }, [workoutId]);
-
-  const loadWorkout = async () => {
+  const loadWorkout = useCallback(async () => {
     if (!workoutId) return;
 
     setLoading(true);
@@ -21,12 +15,21 @@ export const useWorkout = (workoutId: string | null) => {
     try {
       const data = await getWorkout(workoutId);
       setWorkout(data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load workout');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to load workout');
     } finally {
       setLoading(false);
     }
-  };
+  }, [workoutId]);
+
+  useEffect(() => {
+    if (workoutId) {
+      loadWorkout();
+    }
+  }, [workoutId, loadWorkout]);
 
   const addNewSet = async (exerciseId: string, setNumber: number) => {
     if (!workoutId) return;
@@ -46,8 +49,11 @@ export const useWorkout = (workoutId: string | null) => {
       });
 
       return newSet;
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to add set');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to add set');
       throw err;
     }
   };
@@ -70,8 +76,11 @@ export const useWorkout = (workoutId: string | null) => {
       });
 
       return updatedSet;
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to update set');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to update set');
       throw err;
     }
   };
@@ -89,8 +98,11 @@ export const useWorkout = (workoutId: string | null) => {
           sets: prev.sets.filter((s) => s.id !== setId),
         };
       });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to delete set');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to delete set');
       throw err;
     }
   };
@@ -102,8 +114,11 @@ export const useWorkout = (workoutId: string | null) => {
       const updatedWorkout = await swapExerciseApi(workoutId, oldExerciseId, newExerciseId);
       setWorkout(updatedWorkout);
       return updatedWorkout;
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to swap exercise');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to swap exercise');
       throw err;
     }
   };
@@ -134,8 +149,11 @@ export const useWorkout = (workoutId: string | null) => {
       });
 
       return completedSet;
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to log tally reps');
+    } catch (err: unknown) {
+      const detail = (err instanceof Error && 'response' in err)
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail || 'Failed to log tally reps');
       throw err;
     }
   };
