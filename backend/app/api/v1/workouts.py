@@ -29,6 +29,9 @@ from ...schemas.workout import (
     PreviousPerformanceResponse,
     PreviousSetData,
     WorkoutWeeklyStatsResponse,
+    LastCompletedWorkoutResponse,
+    LastWorkoutExerciseSummary,
+    RecentPRResponse,
 )
 
 router = APIRouter()
@@ -379,6 +382,152 @@ def get_weekly_stats(
         avg_sets_per_workout=round(total_sets / workouts_completed, 1) if workouts_completed > 0 else 0,
         avg_workout_duration_minutes=avg_duration,
     )
+
+
+@router.get("/last-completed", response_model=LastCompletedWorkoutResponse)
+def get_last_completed_workout(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the most recent completed workout with exercise summary."""
+    workout = db.query(Workout).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+    ).order_by(Workout.workout_date.desc(), Workout.completed_at.desc()).first()
+
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No completed workouts found"
+        )
+
+    # Calculate duration
+    duration = None
+    if workout.started_at and workout.completed_at:
+        delta = (workout.completed_at - workout.started_at).total_seconds() / 60
+        if 0 < delta < 480:
+            duration = round(delta, 1)
+
+    # Get sets for this workout
+    sets = db.query(Set).filter(
+        Set.workout_id == workout.id,
+        Set.is_completed == True,
+    ).all()
+
+    # Calculate total volume
+    total_volume = sum(
+        (s.weight or 0) * (s.reps or 0) for s in sets
+    )
+
+    # Group by exercise name
+    exercise_map: dict = {}
+    for s in sets:
+        name = s.exercise_name_snapshot
+        if name not in exercise_map:
+            exercise_map[name] = {"sets": 0, "max_weight": None}
+        exercise_map[name]["sets"] += 1
+        if s.weight is not None:
+            current_max = exercise_map[name]["max_weight"]
+            if current_max is None or s.weight > current_max:
+                exercise_map[name]["max_weight"] = s.weight
+
+    exercises = [
+        LastWorkoutExerciseSummary(name=name, sets=data["sets"], max_weight=data["max_weight"])
+        for name, data in exercise_map.items()
+    ]
+
+    return LastCompletedWorkoutResponse(
+        workout_date=workout.workout_date,
+        template_name=workout.template_name_snapshot,
+        duration_minutes=duration,
+        total_sets=len(sets),
+        total_volume=total_volume,
+        exercises=exercises,
+    )
+
+
+@router.get("/recent-prs", response_model=List[RecentPRResponse])
+def get_recent_prs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get personal records achieved in the last 30 days."""
+    today = date.today()
+    thirty_days_ago = today - timedelta(days=30)
+
+    # Subquery: completed workout IDs for this user
+    all_completed = db.query(Workout.id).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+    ).subquery()
+
+    recent_completed = db.query(Workout.id).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+        Workout.workout_date >= thirty_days_ago,
+    ).subquery()
+
+    older_completed = db.query(Workout.id).filter(
+        Workout.user_id == current_user.id,
+        Workout.deleted_at.is_(None),
+        Workout.completed_at.isnot(None),
+        Workout.workout_date < thirty_days_ago,
+    ).subquery()
+
+    # For each exercise, get the max weight in last 30 days
+    recent_maxes = db.query(
+        Set.exercise_name_snapshot,
+        func.max(Set.weight).label('max_weight'),
+    ).filter(
+        Set.workout_id.in_(recent_completed),
+        Set.is_completed == True,
+        Set.weight.isnot(None),
+    ).group_by(Set.exercise_name_snapshot).all()
+
+    prs = []
+    for ex_name, recent_max in recent_maxes:
+        if recent_max is None:
+            continue
+
+        # Get all-time max prior to 30 days ago
+        older_max = db.query(func.max(Set.weight)).filter(
+            Set.workout_id.in_(older_completed),
+            Set.exercise_name_snapshot == ex_name,
+            Set.is_completed == True,
+            Set.weight.isnot(None),
+        ).scalar()
+
+        # It's a PR if recent max >= older max (or no older data exists meaning first time)
+        is_pr = older_max is None or recent_max >= older_max
+        if not is_pr:
+            continue
+
+        # Find the date the PR was achieved
+        pr_workout = db.query(Workout.workout_date).join(Set).filter(
+            Workout.id.in_(db.query(Workout.id).filter(
+                Workout.user_id == current_user.id,
+                Workout.deleted_at.is_(None),
+                Workout.completed_at.isnot(None),
+                Workout.workout_date >= thirty_days_ago,
+            )),
+            Set.exercise_name_snapshot == ex_name,
+            Set.weight == recent_max,
+            Set.is_completed == True,
+        ).order_by(Workout.workout_date.desc()).first()
+
+        prs.append(RecentPRResponse(
+            exercise_name=ex_name,
+            weight=recent_max,
+            date_achieved=pr_workout[0] if pr_workout else today,
+            previous_best=older_max,
+        ))
+
+    # Sort by date descending and limit to 5
+    prs.sort(key=lambda x: x.date_achieved, reverse=True)
+    return prs[:5]
 
 
 @router.get("/{workout_id}", response_model=WorkoutResponse)

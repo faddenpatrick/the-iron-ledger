@@ -67,16 +67,17 @@ class UserSettings(Base):
 
 
 class CoachInsight(Base):
-    """Cached AI coach insights — one per user per day."""
+    """Cached AI coach insights — one per user per day per section."""
 
     __tablename__ = "coach_insights"
     __table_args__ = (
-        UniqueConstraint("user_id", "insight_date", name="uq_coach_insights_user_date"),
+        UniqueConstraint("user_id", "insight_date", "section", name="uq_coach_insights_user_date_section"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     coach_type = Column(String(50), nullable=False)
+    section = Column(String(30), nullable=False, default="insight")  # 'insight' or 'daily_coaching'
     insight = Column(Text, nullable=False)
     insight_date = Column(Date, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

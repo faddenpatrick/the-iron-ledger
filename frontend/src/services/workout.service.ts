@@ -15,6 +15,8 @@ import {
   Set,
   PreviousPerformance,
   WorkoutWeeklyStats,
+  LastCompletedWorkout,
+  RecentPR,
 } from '../types/workout';
 
 // Exercises
@@ -434,6 +436,18 @@ export const getWorkoutWeeklyStats = async (
   const response = await api.get('/workouts/weekly-stats', {
     params: { end_date: endDate },
   });
+  return response.data;
+};
+
+// Last Completed Workout
+export const getLastCompletedWorkout = async (): Promise<LastCompletedWorkout> => {
+  const response = await api.get('/workouts/last-completed');
+  return response.data;
+};
+
+// Recent PRs
+export const getRecentPRs = async (): Promise<RecentPR[]> => {
+  const response = await api.get('/workouts/recent-prs');
   return response.data;
 };
 

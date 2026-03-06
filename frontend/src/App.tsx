@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { WorkoutPage } from './pages/WorkoutPage';
 import { NutritionPage } from './pages/NutritionPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CoachingPage } from './pages/CoachingPage';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,6 +98,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <ProtectedLayout>
               <NutritionPage />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/coaching"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout>
+              <CoachingPage />
             </ProtectedLayout>
           </ProtectedRoute>
         }

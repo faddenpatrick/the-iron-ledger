@@ -130,3 +130,28 @@ class WorkoutWeeklyStatsResponse(BaseModel):
     total_sets: int
     avg_sets_per_workout: float
     avg_workout_duration_minutes: Optional[float] = None
+
+
+class LastWorkoutExerciseSummary(BaseModel):
+    """Exercise summary within last completed workout."""
+    name: str
+    sets: int
+    max_weight: Optional[float] = None
+
+
+class LastCompletedWorkoutResponse(BaseModel):
+    """Last completed workout highlight."""
+    workout_date: date
+    template_name: Optional[str] = None
+    duration_minutes: Optional[float] = None
+    total_sets: int
+    total_volume: float
+    exercises: List[LastWorkoutExerciseSummary]
+
+
+class RecentPRResponse(BaseModel):
+    """A personal record achieved in the last 30 days."""
+    exercise_name: str
+    weight: float
+    date_achieved: date
+    previous_best: Optional[float] = None
