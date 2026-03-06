@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { format } from 'date-fns';
-import { getWorkouts, getWorkoutWeeklyStats } from '../services/workout.service';
+import { getWorkouts, getWorkoutWeeklyStats, getLastCompletedWorkout, getRecentPRs } from '../services/workout.service';
 import { getNutritionSummary, getWeeklySummary } from '../services/nutrition.service';
-import { WorkoutList, WorkoutWeeklyStats } from '../types/workout';
+import { WorkoutList, WorkoutWeeklyStats, LastCompletedWorkout, RecentPR } from '../types/workout';
 import { NutritionSummary, WeeklySummary } from '../types/nutrition';
 import { WeeklyStatsCard } from '../components/features/dashboard/WeeklyStatsCard';
-import { CoachCard } from '../components/features/dashboard/CoachCard';
+import { LastWorkoutCard } from '../components/features/dashboard/LastWorkoutCard';
+import { RecentPRsCard } from '../components/features/dashboard/RecentPRsCard';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -15,8 +16,11 @@ export const Dashboard: React.FC = () => {
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [weeklyNutrition, setWeeklyNutrition] = useState<WeeklySummary | null>(null);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<WorkoutWeeklyStats | null>(null);
+  const [lastWorkout, setLastWorkout] = useState<LastCompletedWorkout | null>(null);
+  const [recentPRs, setRecentPRs] = useState<RecentPR[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [highlightsLoading, setHighlightsLoading] = useState(true);
   const [hasActiveWorkout, setHasActiveWorkout] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -49,6 +53,18 @@ export const Dashboard: React.FC = () => {
         console.error('Failed to fetch weekly stats:', error);
       }).finally(() => {
         setWeeklyLoading(false);
+      });
+
+      // Fetch last workout and recent PRs (parallel, independent loading state)
+      setHighlightsLoading(true);
+      Promise.all([
+        getLastCompletedWorkout().catch(() => null),
+        getRecentPRs().catch(() => []),
+      ]).then(([lastWk, prs]) => {
+        setLastWorkout(lastWk);
+        setRecentPRs(prs);
+      }).finally(() => {
+        setHighlightsLoading(false);
       });
 
       // Fetch nutrition summary
@@ -281,8 +297,11 @@ export const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* AI Coach Insight */}
-            <CoachCard />
+            {/* Last Workout Highlight */}
+            <LastWorkoutCard workout={lastWorkout} loading={highlightsLoading} />
+
+            {/* Recent PRs */}
+            <RecentPRsCard prs={recentPRs} loading={highlightsLoading} />
 
             {/* Weekly Stats */}
             <WeeklyStatsCard

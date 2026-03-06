@@ -14,6 +14,16 @@ export interface CoachInsight {
   generated_at: string;
 }
 
+export interface DailyCoaching {
+  coach_name: string;
+  coach_title: string;
+  coach_type: string;
+  summary: string;
+  workout_tips: string;
+  nutrition_tips: string;
+  generated_at: string;
+}
+
 export const COACH_OPTIONS: CoachPersona[] = [
   {
     key: 'old_school',

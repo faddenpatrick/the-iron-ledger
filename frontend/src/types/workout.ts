@@ -154,3 +154,25 @@ export interface WorkoutWeeklyStats {
   avg_sets_per_workout: number;
   avg_workout_duration_minutes: number | null;
 }
+
+export interface LastWorkoutExerciseSummary {
+  name: string;
+  sets: number;
+  max_weight: number | null;
+}
+
+export interface LastCompletedWorkout {
+  workout_date: string;
+  template_name: string | null;
+  duration_minutes: number | null;
+  total_sets: number;
+  total_volume: number;
+  exercises: LastWorkoutExerciseSummary[];
+}
+
+export interface RecentPR {
+  exercise_name: string;
+  weight: number;
+  date_achieved: string;
+  previous_best: number | null;
+}

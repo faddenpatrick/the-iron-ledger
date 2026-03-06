@@ -29,6 +29,17 @@ class CoachInsightResponse(BaseModel):
         from_attributes = True
 
 
+class DailyCoachingResponse(BaseModel):
+    """Full daily coaching response with 3 sections."""
+    coach_name: str
+    coach_title: str
+    coach_type: str
+    summary: str
+    workout_tips: str
+    nutrition_tips: str
+    generated_at: datetime
+
+
 def _completed_workout_subquery(user_id, db, start_date=None, end_date=None):
     """Build a subquery for completed workout IDs with optional date range."""
     q = db.query(Workout.id).filter(
@@ -450,8 +461,8 @@ def _gather_user_data(user_id, user_settings: UserSettings, db: Session) -> str:
     return "\n".join(lines)
 
 
-async def _generate_insight(coach_type: str, user_data: str) -> str:
-    """Call Gemini API to generate a coaching insight."""
+async def _call_gemini(system_prompt: str, user_prompt: str) -> str:
+    """Call Gemini API with given prompts."""
     if not app_settings.GEMINI_API_KEY:
         raise HTTPException(
             status_code=503,
@@ -460,15 +471,6 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
 
     from google import genai
     from google.genai import types
-
-    coach = get_coach(coach_type)
-    system_prompt = coach["system_prompt"]
-
-    user_prompt = (
-        f"Here is the user's fitness data, including both recent activity and historical trends. "
-        f"Based on this data, give them one personalized coaching insight with a specific, "
-        f"actionable suggestion to improve their diet or workout routine:\n\n{user_data}"
-    )
 
     try:
         client = genai.Client(api_key=app_settings.GEMINI_API_KEY)
@@ -497,6 +499,70 @@ async def _generate_insight(coach_type: str, user_data: str) -> str:
         )
 
 
+async def _generate_insight(coach_type: str, user_data: str) -> str:
+    """Generate a single short coaching insight."""
+    coach = get_coach(coach_type)
+    user_prompt = (
+        f"Here is the user's fitness data, including both recent activity and historical trends. "
+        f"Based on this data, give them one personalized coaching insight with a specific, "
+        f"actionable suggestion to improve their diet or workout routine:\n\n{user_data}"
+    )
+    return await _call_gemini(coach["system_prompt"], user_prompt)
+
+
+def _parse_coaching_sections(text: str) -> dict:
+    """Parse structured coaching output into 3 sections."""
+    sections = {"summary": "", "workout_tips": "", "nutrition_tips": ""}
+
+    # Try to split by markers
+    import re
+    summary_match = re.search(r'\[SUMMARY\](.*?)(?=\[WORKOUT_TIPS\]|$)', text, re.DOTALL)
+    workout_match = re.search(r'\[WORKOUT_TIPS\](.*?)(?=\[NUTRITION_TIPS\]|$)', text, re.DOTALL)
+    nutrition_match = re.search(r'\[NUTRITION_TIPS\](.*?)$', text, re.DOTALL)
+
+    if summary_match:
+        sections["summary"] = summary_match.group(1).strip()
+    if workout_match:
+        sections["workout_tips"] = workout_match.group(1).strip()
+    if nutrition_match:
+        sections["nutrition_tips"] = nutrition_match.group(1).strip()
+
+    # Fallback: if parsing failed, put everything in summary
+    if not sections["summary"] and not sections["workout_tips"]:
+        sections["summary"] = text
+        sections["workout_tips"] = "No specific workout tips available today."
+        sections["nutrition_tips"] = "No specific nutrition tips available today."
+
+    return sections
+
+
+async def _generate_daily_coaching(coach_type: str, user_data: str) -> dict:
+    """Generate full daily coaching with 3 structured sections."""
+    coach = get_coach(coach_type)
+    user_prompt = (
+        "Here is the user's fitness data, including both recent activity and historical trends.\n\n"
+        f"{user_data}\n\n"
+        "Based on this data, provide a comprehensive daily coaching report with THREE sections. "
+        "Use EXACTLY these section markers on their own line:\n\n"
+        "[SUMMARY]\n"
+        "Write a detailed daily summary (2-3 paragraphs). Review their recent performance, "
+        "what's going well, what needs improvement, progress toward their goals, and a motivational closing. "
+        "Reference specific numbers from their data.\n\n"
+        "[WORKOUT_TIPS]\n"
+        "Write 3-5 specific, actionable workout coaching tips. Include: exercise suggestions or swaps, "
+        "when to increase weight based on their progression data, deload timing recommendations, "
+        "training split adjustments, and form or technique cues for their top exercises. "
+        "Each tip should be a bullet point starting with a dash (-).\n\n"
+        "[NUTRITION_TIPS]\n"
+        "Write 3-5 specific, actionable nutrition and supplement recommendations. Include: "
+        "macro adjustments based on their trends vs targets, meal timing suggestions, "
+        "supplement recommendations or adherence feedback, and specific food suggestions to hit their targets. "
+        "Each tip should be a bullet point starting with a dash (-)."
+    )
+    text = await _call_gemini(coach["system_prompt"], user_prompt)
+    return _parse_coaching_sections(text)
+
+
 @router.get("/coaching/insight", response_model=CoachInsightResponse)
 async def get_coaching_insight(
     current_user: User = Depends(get_current_user),
@@ -522,6 +588,7 @@ async def get_coaching_insight(
         CoachInsight.user_id == current_user.id,
         CoachInsight.insight_date == today,
         CoachInsight.coach_type == coach_type,
+        CoachInsight.section == "insight",
     ).first()
 
     if cached:
@@ -541,12 +608,14 @@ async def get_coaching_insight(
     db.query(CoachInsight).filter(
         CoachInsight.user_id == current_user.id,
         CoachInsight.insight_date == today,
+        CoachInsight.section == "insight",
     ).delete()
 
     # Cache the new insight
     new_insight = CoachInsight(
         user_id=current_user.id,
         coach_type=coach_type,
+        section="insight",
         insight=insight_text,
         insight_date=today,
     )
@@ -560,4 +629,83 @@ async def get_coaching_insight(
         coach_type=coach_type,
         insight=insight_text,
         generated_at=new_insight.created_at,
+    )
+
+
+@router.get("/coaching/daily-coaching", response_model=DailyCoachingResponse)
+async def get_daily_coaching(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get full daily AI coaching with summary, workout tips, and nutrition tips.
+
+    Returns cached coaching if one exists for today.
+    Generates a new one via Gemini if not.
+    """
+    user_settings = db.query(UserSettings).filter(
+        UserSettings.user_id == current_user.id
+    ).first()
+
+    coach_type = user_settings.coach_type if user_settings else "old_school"
+    coach = get_coach(coach_type)
+    today = date.today()
+
+    # Check for cached daily coaching
+    cached = db.query(CoachInsight).filter(
+        CoachInsight.user_id == current_user.id,
+        CoachInsight.insight_date == today,
+        CoachInsight.coach_type == coach_type,
+        CoachInsight.section == "daily_coaching",
+    ).first()
+
+    if cached:
+        sections = _parse_coaching_sections(cached.insight)
+        return DailyCoachingResponse(
+            coach_name=coach["name"],
+            coach_title=coach["title"],
+            coach_type=coach_type,
+            summary=sections["summary"],
+            workout_tips=sections["workout_tips"],
+            nutrition_tips=sections["nutrition_tips"],
+            generated_at=cached.created_at,
+        )
+
+    # Generate new coaching
+    user_data = _gather_user_data(current_user.id, user_settings, db)
+    sections = await _generate_daily_coaching(coach_type, user_data)
+
+    # Store the raw text with markers for re-parsing on cache hit
+    raw_text = (
+        f"[SUMMARY]\n{sections['summary']}\n\n"
+        f"[WORKOUT_TIPS]\n{sections['workout_tips']}\n\n"
+        f"[NUTRITION_TIPS]\n{sections['nutrition_tips']}"
+    )
+
+    # Delete any old daily coaching for today
+    db.query(CoachInsight).filter(
+        CoachInsight.user_id == current_user.id,
+        CoachInsight.insight_date == today,
+        CoachInsight.section == "daily_coaching",
+    ).delete()
+
+    new_coaching = CoachInsight(
+        user_id=current_user.id,
+        coach_type=coach_type,
+        section="daily_coaching",
+        insight=raw_text,
+        insight_date=today,
+    )
+    db.add(new_coaching)
+    db.commit()
+    db.refresh(new_coaching)
+
+    return DailyCoachingResponse(
+        coach_name=coach["name"],
+        coach_title=coach["title"],
+        coach_type=coach_type,
+        summary=sections["summary"],
+        workout_tips=sections["workout_tips"],
+        nutrition_tips=sections["nutrition_tips"],
+        generated_at=new_coaching.created_at,
     )
