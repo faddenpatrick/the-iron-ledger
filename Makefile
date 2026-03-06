@@ -33,8 +33,9 @@ build:
 up:
 	docker compose -f docker-compose.prod.yml up -d
 	@echo "✅ Services started!"
-	@echo "Frontend: http://192.168.1.44"
-	@echo "Backend: http://192.168.1.44:8000"
+	@echo "Frontend: https://ironledger.housefadden.com"
+	@echo "Backend:  https://ironledger.housefadden.com/api/v1"
+	@echo "Swagger:  https://ironledger.housefadden.com/docs"
 
 # Stop services
 down:

@@ -13,7 +13,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        id: 'https://ilobster.tail8d808.ts.net:8082/iron-ledger',
+        id: 'https://ironledger.housefadden.com/iron-ledger',
         name: 'The Iron Ledger - Workout & Nutrition Tracker',
         short_name: 'Iron Ledger',
         description: 'Your personal workout and nutrition ledger. Track your gains with the strength of iron, even when offline.',

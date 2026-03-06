@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     networks:
       - healthapp_network
     healthcheck:
@@ -52,7 +52,7 @@ services:
       DEBUG: ${DEBUG:-False}
 
       # CORS
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://localhost:80","http://192.168.1.44","http://192.168.1.44:80","https://ilobster.tail8d808.ts.net:8082","https://ilobster.tail8d808.ts.net:8000","https://ilobster.tail8d808.ts.net"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://localhost:80","http://192.168.1.44","http://192.168.1.44:80","https://ironledger.housefadden.com","https://ilobster.tail8d808.ts.net:8082","https://ilobster.tail8d808.ts.net:8000","https://ilobster.tail8d808.ts.net"]}
 
       # AI Coach
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -60,7 +60,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "192.168.1.44:8000:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - healthapp_network
     healthcheck:
@@ -77,13 +77,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://ilobster.tail8d808.ts.net:8000}
+        VITE_API_URL: ${VITE_API_URL:-https://ironledger.housefadden.com}
     container_name: healthapp_frontend
     restart: unless-stopped
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
-      - "80:80"
+      - "127.0.0.1:3080:80"
     networks:
       - healthapp_network
     depends_on:
