@@ -9,6 +9,7 @@ import { WorkoutPage } from './pages/WorkoutPage';
 import { NutritionPage } from './pages/NutritionPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CoachingPage } from './pages/CoachingPage';
+import { AdminPage } from './pages/AdminPage';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -44,6 +45,24 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (user) {
     return <Navigate to="/" replace />;
   }
+
+  return <>{children}</>;
+};
+
+// Admin route wrapper (requires authentication + admin role)
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_admin) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 };
@@ -120,6 +139,18 @@ function AppRoutes() {
               <SettingsPage />
             </ProtectedLayout>
           </ProtectedRoute>
+        }
+      />
+
+      {/* Admin route */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <ProtectedLayout>
+              <AdminPage />
+            </ProtectedLayout>
+          </AdminRoute>
         }
       />
 

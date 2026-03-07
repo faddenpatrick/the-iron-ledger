@@ -58,7 +58,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.refresh(user)
 
     # Generate tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     return Token(
@@ -90,7 +90,7 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
         )
 
     # Generate tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     return Token(
@@ -140,7 +140,7 @@ def refresh(token_data: TokenRefresh, db: Session = Depends(get_db)):
         )
 
     # Generate new tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     return Token(

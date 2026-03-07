@@ -23,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Decode JWT to get user info (simplified - in production use a library)
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ id: payload.sub, email: payload.email || '' });
+        setUser({ id: payload.sub, email: payload.email || '', is_admin: payload.is_admin || false });
       } catch {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Decode token to get user info
     const payload = JSON.parse(atob(access_token.split('.')[1]));
-    setUser({ id: payload.sub, email: credentials.email });
+    setUser({ id: payload.sub, email: credentials.email, is_admin: payload.is_admin || false });
   };
 
   const register = async (data: RegisterData) => {
@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Decode token to get user info
     const payload = JSON.parse(atob(access_token.split('.')[1]));
-    setUser({ id: payload.sub, email: data.email });
+    setUser({ id: payload.sub, email: data.email, is_admin: payload.is_admin || false });
   };
 
   const logout = () => {
