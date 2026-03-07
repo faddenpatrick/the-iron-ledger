@@ -11,6 +11,7 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
+  registration_code?: string;
 }
 
 export interface TokenResponse {

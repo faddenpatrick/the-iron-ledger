@@ -6,6 +6,7 @@ export const LoginPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [registrationCode, setRegistrationCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +22,7 @@ export const LoginPage: React.FC = () => {
       if (isLogin) {
         await login({ email, password });
       } else {
-        await register({ email, password });
+        await register({ email, password, registration_code: registrationCode || undefined });
       }
       navigate('/');
     } catch (err: unknown) {
@@ -117,6 +118,23 @@ export const LoginPage: React.FC = () => {
                 minLength={8}
               />
             </div>
+
+            {!isLogin && (
+              <div>
+                <label htmlFor="registrationCode" className="block text-sm font-medium text-gray-300 mb-1">
+                  Registration Code
+                </label>
+                <input
+                  id="registrationCode"
+                  type="text"
+                  value={registrationCode}
+                  onChange={(e) => setRegistrationCode(e.target.value)}
+                  className="input"
+                  placeholder="Enter registration code"
+                  required
+                />
+              </div>
+            )}
 
             {error && (
               <div className="text-red-500 text-sm">{error}</div>

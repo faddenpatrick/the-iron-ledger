@@ -8,6 +8,7 @@ class UserRegister(BaseModel):
     """User registration request."""
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=100)
+    registration_code: Optional[str] = None
 
 
 class UserLogin(BaseModel):

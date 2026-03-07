@@ -9,6 +9,7 @@ from ...core.security import (
     create_refresh_token,
     decode_token,
 )
+from ...config import settings as app_settings
 from ...models.user import User, UserSettings
 from ...schemas.auth import UserRegister, UserLogin, Token, TokenRefresh, UserResponse
 
@@ -22,7 +23,16 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
     Creates a new user account with email and password.
     Automatically creates default user settings.
+    Requires a registration code if REGISTRATION_CODE is configured.
     """
+    # Validate registration code if configured
+    if app_settings.REGISTRATION_CODE:
+        if not user_data.registration_code or user_data.registration_code != app_settings.REGISTRATION_CODE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid registration code",
+            )
+
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
