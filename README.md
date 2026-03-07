@@ -4,24 +4,32 @@
 
 A self-hosted Progressive Web App for tracking workouts and nutrition with complete offline functionality.
 
-## 🚀 Features
+## Features
 
 - **Offline-First Architecture**: Works seamlessly without internet, syncs when connected
 - **Workout Tracking**: Create templates, log sets with weight/reps/RPE, save freestyle workouts
-- **Nutrition Tracking**: Custom meal categories, food database, macro tracking with daily summaries
+- **Nutrition Tracking**: Custom meal categories, food database, macro tracking with daily and weekly summaries
+- **Supplement Tracking**: Log daily supplement intake with brand, dosage, and notes
+- **Body Measurements**: Track body weight over time with daily entries
+- **AI Coach**: Personalized coaching insights powered by Google Gemini with selectable coach personas
+- **Cheat Day Toggle**: Mark cheat days to exclude them from weekly macro averages
 - **Home Gym Focused**: Pre-loaded with 100+ exercises (barbell, dumbbell, kettlebell, bodyweight)
 - **Mobile-First UI**: One-handed operation, thumb-friendly zones, swipe gestures
+- **Barcode Scanner**: Scan food barcodes via OpenFoodFacts integration
 - **Data Integrity**: Snapshot strategy preserves historical accuracy when editing base data
 - **JWT Authentication**: Secure token-based auth with automatic refresh
+- **Registration Gating**: Optional registration code to control new user sign-ups
+- **Admin Dashboard**: Platform metrics, user growth charts, and feature adoption stats
 
-## 📋 Technology Stack
+## Technology Stack
 
 ### Backend
 - **FastAPI** (Python) - High-performance async API framework
 - **PostgreSQL 16** - Relational database with UUID primary keys
 - **SQLAlchemy** - ORM for database operations
 - **Alembic** - Database migrations
-- **JWT** - Token-based authentication
+- **JWT** (python-jose) - Token-based authentication
+- **Google Gemini** (google-genai) - AI coaching insights
 
 ### Frontend
 - **React 18** + **TypeScript** - UI framework
@@ -29,50 +37,89 @@ A self-hosted Progressive Web App for tracking workouts and nutrition with compl
 - **Tailwind CSS** - Utility-first styling
 - **React Router** - Client-side routing
 - **Axios** - HTTP client with JWT interceptors
-- **Dexie** - IndexedDB wrapper for offline storage
-- **vite-plugin-pwa** - Progressive Web App with service worker
+- **Dexie 4** - IndexedDB wrapper for offline storage
+- **vite-plugin-pwa** - Progressive Web App with Workbox service worker
+- **html5-qrcode** - Barcode scanning
+- **date-fns** - Date utilities
 
 ### Deployment
 - **Docker** + **Docker Compose** - Containerization
-- **Nginx** - Frontend reverse proxy (built into frontend container)
+- **Nginx** - Reverse proxy (optional profile for production with domain/SSL)
+- **GitHub Actions** - CI/CD pipeline builds and pushes images to GHCR
+- **Watchtower** - Automatic container updates from GHCR
 
-## 📦 Project Structure
+## Project Structure
 
 ```
-HealthApp/
+the-iron-ledger/
 ├── backend/                  # FastAPI application
 │   ├── app/
-│   │   ├── main.py          # FastAPI entry point
-│   │   ├── config.py        # Environment configuration
+│   │   ├── main.py          # FastAPI entry point, router registration
+│   │   ├── config.py        # Pydantic settings from environment
 │   │   ├── database.py      # SQLAlchemy session management
-│   │   ├── models/          # ORM models (11 tables)
+│   │   ├── models/          # ORM models (16 tables)
+│   │   │   ├── user.py      # User, UserSettings, CoachInsight, BodyMeasurement
+│   │   │   ├── exercise.py  # Exercise, WorkoutTemplate, TemplateExercise
+│   │   │   ├── workout.py   # Workout, Set
+│   │   │   ├── nutrition.py # MealCategory, Food, Meal, MealItem, CheatDay
+│   │   │   └── supplement.py# Supplement, SupplementLog
 │   │   ├── schemas/         # Pydantic validation schemas
-│   │   ├── api/v1/          # API endpoints (auth, exercises, workouts, nutrition)
-│   │   ├── core/            # Security (JWT, password hashing)
-│   │   └── migrations/      # Alembic database migrations
+│   │   ├── api/v1/          # API route handlers
+│   │   │   ├── auth.py      # Register, login, token refresh
+│   │   │   ├── exercises.py # Exercise CRUD
+│   │   │   ├── workouts.py  # Templates, sessions, sets
+│   │   │   ├── nutrition.py # Meals, foods, categories, cheat days
+│   │   │   ├── settings.py  # User preferences, macro targets
+│   │   │   ├── openfoodfacts.py # External food database proxy
+│   │   │   ├── coaching.py  # AI coach insights
+│   │   │   ├── supplements.py # Supplement CRUD and logging
+│   │   │   ├── measurements.py # Body weight tracking
+│   │   │   └── admin.py     # Admin metrics and user management
+│   │   └── core/
+│   │       ├── security.py  # JWT, bcrypt password hashing
+│   │       └── coach_personas.py # AI coach personality definitions
 │   ├── scripts/
 │   │   └── seed_exercises.py  # Seed 100+ home gym exercises
+│   ├── alembic/             # Database migrations
 │   ├── requirements.txt
 │   └── alembic.ini
 │
 ├── frontend/                # React PWA
 │   ├── src/
 │   │   ├── main.tsx        # Entry point
-│   │   ├── App.tsx         # Routing and auth
-│   │   ├── components/     # UI components
-│   │   ├── pages/          # Page components
-│   │   ├── context/        # React Context (Auth)
-│   │   ├── services/       # API client
-│   │   └── types/          # TypeScript definitions
+│   │   ├── App.tsx         # Routing with protected/public/admin routes
+│   │   ├── pages/          # Page components (7)
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── WorkoutPage.tsx
+│   │   │   ├── NutritionPage.tsx
+│   │   │   ├── CoachingPage.tsx
+│   │   │   ├── SettingsPage.tsx
+│   │   │   └── AdminPage.tsx
+│   │   ├── components/
+│   │   │   └── features/   # Feature components by domain
+│   │   │       ├── dashboard/  # 4 components
+│   │   │       ├── workout/    # 11 components
+│   │   │       ├── nutrition/  # 16 components
+│   │   │       └── layout/     # 2 components (BottomNav, Header)
+│   │   ├── context/        # AuthContext, SyncContext
+│   │   ├── services/       # API clients and offline services (10 files)
+│   │   ├── hooks/          # Custom hooks (6)
+│   │   ├── types/          # TypeScript interfaces (9 files)
+│   │   └── utils/          # Macro calculations, UUID generation
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── docker-compose.yml       # PostgreSQL service
+├── nginx/                   # Nginx reverse proxy config
+├── docker-compose.yml       # Dev: PostgreSQL only
+├── docker-compose.prod.yml  # Prod: DB + Backend + Frontend + optional Nginx
+├── Makefile                 # Docker/deployment commands
 ├── .env.example            # Environment template
-└── README.md               # This file
+└── .github/workflows/
+    └── deploy.yml          # CI/CD: build and push to GHCR
 ```
 
-## 🛠️ Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 
@@ -85,7 +132,7 @@ HealthApp/
 
 ```bash
 git clone <repository-url>
-cd HealthApp
+cd the-iron-ledger
 ```
 
 ### 2. Configure Environment
@@ -95,21 +142,24 @@ cd HealthApp
 cp .env.example .env
 
 # Edit .env and update:
-# - SECRET_KEY (generate a long random string)
-# - DATABASE_URL (if not using Docker)
+# - SECRET_KEY (generate with: openssl rand -hex 32)
+# - DATABASE_PASSWORD
 # - CORS_ORIGINS (add your frontend URLs)
+# - VITE_API_URL (your backend URL)
+# - REGISTRATION_CODE (optional, leave empty for open registration)
+# - GEMINI_API_KEY (optional, for AI coaching features)
 ```
 
 ### 3. Start PostgreSQL Database
 
 ```bash
-docker-compose up -d postgres
+docker compose up -d
 ```
 
 Wait for PostgreSQL to be healthy (~10 seconds):
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ### 4. Set Up Backend
@@ -123,10 +173,7 @@ pip install -r requirements.txt
 # Run database migrations
 alembic upgrade head
 
-# Seed exercises
-python scripts/seed_exercises.py
-
-# Start FastAPI server
+# Start FastAPI server (exercises are auto-seeded on startup)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -142,19 +189,16 @@ cd frontend
 # Install dependencies
 npm install
 
-# Copy environment template
-cp .env.example .env
-
 # Start development server
 npm run dev
 ```
 
 The frontend will be available at: `http://localhost:5173`
 
-## 🔐 API Endpoints
+## API Endpoints
 
 ### Authentication
-- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/register` - Register new user (optional registration code)
 - `POST /api/v1/auth/login` - Login with email/password
 - `POST /api/v1/auth/refresh` - Refresh access token
 
@@ -201,25 +245,55 @@ The frontend will be available at: `http://localhost:5173`
 - `GET /api/v1/nutrition/summary?summary_date=YYYY-MM-DD` - Daily nutrition summary
 - `GET /api/v1/nutrition/weekly-average?end_date=YYYY-MM-DD` - 7-day running average
 
+### Supplements
+- `GET /api/v1/supplements` - List user supplements
+- `POST /api/v1/supplements` - Create supplement
+- `PUT /api/v1/supplements/{id}` - Update supplement
+- `DELETE /api/v1/supplements/{id}` - Delete supplement
+- `POST /api/v1/supplements/{id}/log` - Log supplement intake
+- `GET /api/v1/supplements/logs?date=YYYY-MM-DD` - Get logs for a date
+
+### Body Measurements
+- `POST /api/v1/measurements` - Log body measurement
+- `GET /api/v1/measurements` - List measurements (with date range)
+
+### AI Coaching
+- `GET /api/v1/coaching/daily` - Get daily AI coaching insight
+
 ### OpenFoodFacts Integration
 - `GET /api/v1/openfoodfacts/search?q={query}` - Search external food database
 - `GET /api/v1/openfoodfacts/barcode/{barcode}` - Lookup food by barcode
 
-## 🗄️ Database Schema
+### User Settings
+- `GET /api/v1/user/settings` - Get user preferences
+- `PUT /api/v1/user/settings` - Update preferences and macro targets
 
-11 tables with UUID primary keys for offline sync:
+### Admin (requires admin role)
+- `GET /api/v1/admin/overview` - Platform metrics
+- `GET /api/v1/admin/user-growth` - User growth data
+- `GET /api/v1/admin/users` - User list with details
+- `GET /api/v1/admin/feature-adoption` - Feature usage stats
 
-1. **users** - Authentication and profile
-2. **user_settings** - Preferences and macro targets
-3. **exercises** - Exercise database (system + custom)
-4. **workout_templates** - User workout plans
-5. **template_exercises** - Exercises in templates
-6. **workouts** - Actual workout sessions with template name snapshots
-7. **sets** - Individual exercise sets with exercise name snapshots
-8. **meal_categories** - User-defined meal categories
-9. **foods** - Food database (system + custom)
-10. **meals** - Meal logging sessions with category name snapshots
-11. **meal_items** - Foods in meals with macro snapshots
+## Database Schema
+
+16 tables with UUID primary keys for offline sync:
+
+1. **users** - Authentication and profile (includes admin flag)
+2. **user_settings** - Preferences, macro targets, coach type selection
+3. **coach_insights** - Cached AI coaching insights (one per user per day per section)
+4. **body_measurements** - Daily body weight tracking
+5. **exercises** - Exercise database (system + custom per user)
+6. **workout_templates** - User workout plans
+7. **template_exercises** - Exercises in templates with order and targets
+8. **workouts** - Actual workout sessions with template name snapshots
+9. **sets** - Individual exercise sets with exercise name snapshots
+10. **meal_categories** - User-defined meal categories
+11. **foods** - Food database (system + custom per user)
+12. **meals** - Meal logging sessions with category name snapshots
+13. **meal_items** - Foods in meals with macro snapshots
+14. **cheat_days** - Cheat day markers (one per user per date)
+15. **supplements** - User supplement definitions (name, brand, dosage)
+16. **supplement_logs** - Daily supplement intake tracking
 
 ### Snapshot Strategy
 
@@ -231,46 +305,75 @@ Historical data integrity is preserved through snapshots:
 
 This ensures workout and nutrition history remains accurate even if templates, exercises, categories, or foods are renamed or deleted.
 
-## 🚢 Deployment
+## Docker Commands (Makefile)
 
-The app runs on a Linux server (ilobster) at `192.168.1.44` using Docker Compose.
-
-### Deploy Updates
-
+### Development
 ```bash
-# From local machine: commit and push
-git add . && git commit -m "your message" && git push
-
-# SSH into server and deploy
-ssh patrick@192.168.1.44
-cd ~/the-iron-ledger
-git pull
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml build --no-cache
-docker compose -f docker-compose.prod.yml up -d
+make build           # Build Docker images
+make up              # Start all services
+make down            # Stop services
+make restart         # Restart services
+make logs            # View all logs (follow mode)
+make logs-backend    # Backend logs only
+make logs-frontend   # Frontend logs only
+make logs-db         # Database logs only
+make ps              # Show running containers
 ```
+
+### Database
+```bash
+make db-shell        # Open PostgreSQL shell
+make db-backup       # Backup database to backups/
+make db-restore FILE=backups/file.sql  # Restore from backup
+```
+
+### Deployment
+```bash
+make deploy          # Full deployment (pull, build, restart)
+make clean           # Remove containers and volumes (with confirmation)
+```
+
+## Deployment
+
+### CI/CD Pipeline
+
+GitHub Actions (`.github/workflows/deploy.yml`) triggers on push to `main`:
+1. Builds backend and frontend Docker images
+2. Pushes to GitHub Container Registry (GHCR) with `latest` and SHA tags
+3. Watchtower on the production server auto-pulls and restarts updated containers
+
+### Production Stack
+
+The production deployment runs via `docker-compose.prod.yml`:
+- **PostgreSQL 16** - Database
+- **Backend** - FastAPI (GHCR image, Watchtower-enabled)
+- **Frontend** - React/Nginx (GHCR image, Watchtower-enabled)
+- **Nginx** - Optional reverse proxy profile for domain/SSL (`--profile with-nginx`)
 
 ### Access
 
-- Frontend: `http://192.168.1.44`
-- Backend API: `http://192.168.1.44:8000`
-- API Docs: `http://192.168.1.44:8000/docs`
+- Frontend: `https://ironledger.housefadden.com`
+- API Docs: `https://ironledger.housefadden.com/docs`
 
-## ✅ Implementation Status
+## Frontend Routing
 
-- ✅ **Phase 1**: Database & Backend Core — PostgreSQL, Alembic, JWT auth, 100+ exercises seeded
-- ✅ **Phase 2**: Workout Backend API — Exercise CRUD, templates, session logging, set tracking with snapshots
-- ✅ **Phase 3**: Nutrition Backend API — Meal categories, food database, meal logging, macro snapshots, daily/weekly summaries
-- ✅ **Phase 4**: React Frontend Foundation — Vite + React + TypeScript, Tailwind, JWT auth flow, routing
-- ✅ **Phase 5**: Workout Tracking Frontend UI — Exercise selector, template builder, workout logger, set rows, rest timer
-- ✅ **Phase 6**: Nutrition Tracking Frontend UI — Meal logger, food search, OpenFoodFacts integration, barcode scanning, portion input, macro summaries, tap-to-edit servings
-- ✅ **Phase 7**: PWA & Offline Support — IndexedDB with Dexie, service worker, offline-first data access
-- ✅ **Phase 8**: Dashboard & Settings — Macro targets, unit preferences, PWA install prompt
-- ✅ **Phase 9**: Docker & Deployment — Multi-container Docker Compose (PostgreSQL, FastAPI, React/Nginx), auto-migrations on startup
+| Route | Page | Access |
+|-------|------|--------|
+| `/login` | LoginPage | Public only |
+| `/` | Dashboard | Authenticated |
+| `/workout` | WorkoutPage | Authenticated |
+| `/nutrition` | NutritionPage | Authenticated |
+| `/coaching` | CoachingPage | Authenticated |
+| `/settings` | SettingsPage | Authenticated |
+| `/admin` | AdminPage | Admin only |
 
-## 🧪 Testing
+## Testing
 
-### Backend API Testing
+No automated test suite exists currently. Manual testing is done via:
+- Swagger UI at `/docs` for backend API testing
+- Frontend at `http://localhost:5173` for UI testing
+
+### Quick API Test
 
 ```bash
 # Register user
@@ -292,7 +395,7 @@ curl http://localhost:8000/api/v1/exercises \
 
 ```bash
 # Connect to database
-docker exec -it healthapp_db psql -U healthapp_user -d healthapp
+make db-shell
 
 # Check tables
 \dt
@@ -300,41 +403,43 @@ docker exec -it healthapp_db psql -U healthapp_user -d healthapp
 # Count exercises
 SELECT COUNT(*) FROM exercises WHERE is_custom = false;
 
-# View user
+# View users
 SELECT id, email, created_at FROM users;
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Containers won't start
-- Check status: `docker compose -f docker-compose.prod.yml ps`
-- View logs: `docker compose -f docker-compose.prod.yml logs -f`
+- Check status: `make ps`
+- View logs: `make logs`
 - Rebuild: `docker compose -f docker-compose.prod.yml build --no-cache`
 
 ### Frontend can't connect to API
 - Verify `VITE_API_URL` in `.env` matches the backend address
-- Check CORS_ORIGINS in `.env` includes the frontend URL
-- Backend logs: `docker compose -f docker-compose.prod.yml logs backend`
+- Check `CORS_ORIGINS` in `.env` includes the frontend URL
+- Backend logs: `make logs-backend`
 
 ### Database issues
-- Shell into DB: `docker compose -f docker-compose.prod.yml exec db psql -U healthapp_user -d healthapp`
+- Shell into DB: `make db-shell`
 - Migrations run automatically on backend container startup via `docker-entrypoint.sh`
 
-## 📝 Notes
+## Notes
 
 - Default theme: Dark mode
 - Default units: lbs (configurable in Settings)
 - Default rest timer: 90 seconds
 - All timestamps stored in UTC
 - Soft deletes for sync reconciliation
+- Exercises are auto-seeded on backend startup
+- AI coaching requires a `GEMINI_API_KEY` environment variable
 
-## 🎯 Future Work
+## Future Work
 
-- Jellyfin integration for media streaming
 - Automated testing (backend + frontend)
 - HTTPS via Tailscale Serve or reverse proxy
-- Nextcloud integration for file sync
+- Cardio workout support (placeholder exists)
+- Progress charts and trend visualization
 
-## 📄 License
+## License
 
 Private project for personal use.
